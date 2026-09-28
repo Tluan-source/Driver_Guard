@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Models & data — KHÔNG commit (license + dung lượng)
+models/*
+!models/README.md
+data/*
+!data/README.md
+
+# Runtime outputs
+*.db
+*.jsonl
+!tests/golden/*.jsonl
+runs/
+outputs/
+
+# Video/ảnh tự quay — tuyệt đối không commit (privacy)
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Dashboard
+dashboard/node_modules/
+dashboard/dist/
+
+# Secrets
+.env
+configs/users.yaml
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

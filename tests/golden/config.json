@@ -1,0 +1,127 @@
+{
+  "epoch": 1789959600,
+  "tz_offset_h": 7,
+  "config": {
+    "runtime": {
+      "target_fps": 15.0,
+      "phone_every_n_frames": 3,
+      "max_frame_gap_ms": 300
+    },
+    "models": {
+      "face_landmarker": "models/face_landmarker.task",
+      "phone_detector": "models/efficientdet_lite0.tflite",
+      "phone_backend": "mediapipe"
+    },
+    "quality": {
+      "min_face_width_ratio": 0.1,
+      "brightness_min": 40.0,
+      "brightness_max": 220.0,
+      "min_blur_var": 20.0,
+      "max_eye_valid_yaw_deg": 35.0,
+      "max_eye_valid_pitch_deg": 30.0,
+      "min_quality": 0.45,
+      "degraded_after_ms": 3000
+    },
+    "calibration": {
+      "method": "adaptive",
+      "eye_signal": "ear",
+      "prior_ear_open": 0.28,
+      "prior_strength_s": 20.0,
+      "warmup_s": 60.0,
+      "open_percentile": 80.0,
+      "drift_tau_s": 600.0,
+      "max_drift_down": 0.15,
+      "fixed_closed_ear": 0.21
+    },
+    "eye": {
+      "closed_ratio_enter": 0.6,
+      "closed_ratio_exit": 0.72,
+      "blendshape_closed_enter": 0.55,
+      "blendshape_closed_exit": 0.4,
+      "max_invalid_gap_ms": 300,
+      "perclos_window_s": 60.0,
+      "perclos_min_valid_ratio": 0.5,
+      "blink_rate_window_s": 60.0,
+      "long_closure_ms": 1000,
+      "microsleep_ms": 2000
+    },
+    "yawn": {
+      "mar_enter": 0.55,
+      "mar_exit": 0.4,
+      "min_duration_ms": 1500,
+      "window_s": 300.0
+    },
+    "head": {
+      "off_road_yaw_deg": 30.0,
+      "look_down_pitch_deg": -20.0,
+      "distraction_ms": 2500,
+      "nod_drop_deg": 15.0,
+      "nod_window_ms": 700,
+      "nod_cooldown_ms": 3000
+    },
+    "phone": {
+      "min_confidence": 0.4,
+      "window_ms": 2000,
+      "persistence_ratio": 0.6,
+      "min_duration_ms": 1500,
+      "face_proximity": 1.6
+    },
+    "context": {
+      "long_drive_min": 240.0,
+      "rest_reset_min": 15.0,
+      "circadian_low_hours": [
+        [
+          1,
+          5
+        ],
+        [
+          13,
+          15
+        ]
+      ],
+      "parked_speed_kmh": 5.0,
+      "high_risk_sensitivity": 0.85
+    },
+    "risk": {
+      "weights": {
+        "eye": 0.4,
+        "perclos": 0.25,
+        "yawn": 0.1,
+        "head": 0.15,
+        "phone": 0.1
+      },
+      "perclos_normal": 0.08,
+      "perclos_caution": 0.15,
+      "perclos_warning": 0.25,
+      "caution_enter": 35.0,
+      "caution_exit": 25.0,
+      "warning_enter": 60.0,
+      "warning_exit": 45.0,
+      "enter_persist_ms": 1500,
+      "min_dwell_ms": 3000,
+      "alert_cooldown_ms": 20000,
+      "frequent_yawn_count": 2,
+      "phone_can_escalate_to_critical": false
+    },
+    "trip": {
+      "bucket_s": 60.0,
+      "trend_window_min": 30.0,
+      "trend_min_buckets": 10,
+      "trend_slope_caution": 0.5
+    },
+    "api": {
+      "host": "127.0.0.1",
+      "port": 8000,
+      "stream_hz": 10.0,
+      "token_ttl_s": 43200,
+      "users_file": "configs/users.example.yaml"
+    },
+    "storage": {
+      "db_path": "data/runtime/driverguard.db",
+      "retention_days": 30
+    },
+    "privacy": {
+      "debug_recording": false
+    }
+  }
+}

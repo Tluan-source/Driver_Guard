@@ -1,0 +1,111 @@
+# DriverGuard — cấu hình mặc định
+#
+# MỌI NGƯỠNG dưới đây là "engineering seed": tham số phải tune trên tập VALIDATION
+# (chia theo người), KHÔNG phải chuẩn y khoa/pháp lý, và KHÔNG được tune trên tập test.
+# Các khoá có đánh dấu [HITL] được phép chỉnh qua POST /config bởi vai trò fleet_manager.
+
+runtime:
+  target_fps: 15
+  phone_every_n_frames: 3        # chạy phone detector mỗi N frame để tiết kiệm compute
+  max_frame_gap_ms: 300          # khoảng trống lớn hơn -> không coi là liên tục
+
+models:
+  face_landmarker: models/face_landmarker.task
+  phone_detector: models/efficientdet_lite0.tflite
+  phone_backend: mediapipe       # mediapipe | none
+
+quality:
+  min_face_width_ratio: 0.10     # bề rộng mặt / bề rộng frame
+  brightness_min: 40
+  brightness_max: 220
+  min_blur_var: 20.0
+  max_eye_valid_yaw_deg: 35      # quá góc này thì EAR không đáng tin -> eye invalid
+  max_eye_valid_pitch_deg: 30
+  min_quality: 0.45
+  degraded_after_ms: 3000        # mặt không hợp lệ liên tục > ngưỡng -> SENSOR_DEGRADED
+
+calibration:
+  method: adaptive               # adaptive | fixed   (fixed = baseline cho thí nghiệm Hướng 1)
+  eye_signal: ear                # ear | blendshape | fused
+  prior_ear_open: 0.28           # prior quần thể cho EAR mắt mở
+  prior_strength_s: 20           # độ tin prior, quy đổi ra "số giây quan sát"
+  warmup_s: 60                   # thời gian hiệu chỉnh đầu chuyến (giây mặt hợp lệ)
+  open_percentile: 80
+  drift_tau_s: 600               # hằng số thời gian bám trôi sau hiệu chỉnh
+  max_drift_down: 0.15           # baseline không được trôi xuống quá 15% (tránh "học" luôn cơn buồn ngủ)
+  fixed_closed_ear: 0.21         # ngưỡng EAR cố định kiểu "nhập khẩu" dùng cho method=fixed
+
+eye:
+  closed_ratio_enter: 0.60       # [HITL] EAR/baseline < ngưỡng -> nhắm
+  closed_ratio_exit: 0.72        # EAR/baseline > ngưỡng -> mở (hysteresis)
+  blendshape_closed_enter: 0.55
+  blendshape_closed_exit: 0.40
+  max_invalid_gap_ms: 300        # mất mắt ngắn hơn ngưỡng trong lúc nhắm -> vẫn tính tiếp
+  perclos_window_s: 60
+  perclos_min_valid_ratio: 0.5   # cửa sổ phải có >=50% thời gian hợp lệ mới báo PERCLOS-proxy
+  blink_rate_window_s: 60
+  long_closure_ms: 1000          # [HITL] nhắm liên tục >= -> WARNING
+  microsleep_ms: 2000            # [HITL] nhắm liên tục >= -> CRITICAL
+
+yawn:
+  mar_enter: 0.55
+  mar_exit: 0.40
+  min_duration_ms: 1500          # [HITL] phân biệt ngáp với nói chuyện
+  window_s: 300
+
+head:
+  off_road_yaw_deg: 30           # so với tư thế trung tính đã hiệu chỉnh
+  look_down_pitch_deg: -20
+  distraction_ms: 2500           # [HITL] nhìn lệch liên tục >= -> WARNING
+  nod_drop_deg: 15
+  nod_window_ms: 700
+  nod_cooldown_ms: 3000
+
+phone:
+  min_confidence: 0.40           # [HITL]
+  window_ms: 2000
+  persistence_ratio: 0.6
+  min_duration_ms: 1500
+  face_proximity: 1.6            # phone phải nằm trong bbox mặt mở rộng x lần
+
+context:
+  long_drive_min: 240            # lái liên tục >= 4 giờ
+  rest_reset_min: 15             # dừng >= 15 phút thì reset thời gian lái liên tục
+  circadian_low_hours: [[1, 5], [13, 15]]
+  parked_speed_kmh: 5
+  high_risk_sensitivity: 0.85    # nhân vào ngưỡng khi ngữ cảnh rủi ro cao (nhạy hơn)
+
+risk:
+  weights: {eye: 0.40, perclos: 0.25, yawn: 0.10, head: 0.15, phone: 0.10}
+  perclos_normal: 0.08
+  perclos_caution: 0.15          # [HITL]
+  perclos_warning: 0.25          # [HITL]
+  caution_enter: 35
+  caution_exit: 25
+  warning_enter: 60
+  warning_exit: 45
+  enter_persist_ms: 1500
+  min_dwell_ms: 3000
+  alert_cooldown_ms: 20000
+  frequent_yawn_count: 2
+  phone_can_escalate_to_critical: false   # phone đơn lẻ không bao giờ tạo CRITICAL
+
+trip:
+  bucket_s: 60
+  trend_window_min: 30
+  trend_min_buckets: 10
+  trend_slope_caution: 0.5       # điểm fatigue-index / phút
+
+api:
+  host: 127.0.0.1
+  port: 8000
+  stream_hz: 10
+  token_ttl_s: 43200
+  users_file: configs/users.example.yaml
+
+storage:
+  db_path: data/runtime/driverguard.db
+  retention_days: 30
+
+privacy:
+  debug_recording: false         # bật chỉ khi có văn bản đồng ý; không bao giờ bật ở production

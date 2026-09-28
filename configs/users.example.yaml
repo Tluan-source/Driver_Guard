@@ -1,0 +1,12 @@
+# Tài khoản DEMO cho dashboard (2 vai trò theo đề bài).
+# Copy thành configs/users.yaml và đổi mật khẩu trước khi demo thật:
+#   python -m driverguard.api.auth hash "mat-khau-moi"
+# driver_id là mã giả danh (pseudonymous) — không dùng tên thật / biển số.
+users:
+  - username: driver01
+    role: driver
+    driver_id: D001
+    password: driver01          # chỉ dùng cho demo; file thật nên dùng password_hash
+  - username: manager
+    role: fleet_manager
+    password: manager

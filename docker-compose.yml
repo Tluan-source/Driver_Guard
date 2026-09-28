@@ -1,0 +1,24 @@
+# docker compose up --build   ->  http://localhost:8000  (dashboard + API, synthetic demo source)
+#
+# Webcam inside Docker works on LINUX hosts only (uncomment `devices`). On Windows/macOS Docker Desktop
+# there is no /dev/video0 — run the live camera natively:  driverguard serve --source 0
+#
+# "Mô phỏng Jetson" (functional check on ARM64, NOT a performance number):
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile -t driverguard:arm64 .
+services:
+  driverguard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data
+    environment:
+      - DRIVERGUARD_SECRET=change-me-for-demo
+    # command: ["driverguard", "serve", "--source", "/app/data/videos/sample.mp4", "--host", "0.0.0.0"]
+    # devices:
+    #   - /dev/video0:/dev/video0
+    # network_mode: "none" would prove offline operation, but then the dashboard port is unreachable;
+    # use the privacy test in docs/01_architecture.md instead.

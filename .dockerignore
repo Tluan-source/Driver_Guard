@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+dashboard/node_modules
+dashboard/dist
+data
+models
+runs
+docs
+*.mp4
+*.mov
+*.avi
