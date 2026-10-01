@@ -5,6 +5,10 @@ nhận diện dấu hiệu buồn ngủ, phản hồi nhanh và hoạt động t
 dùng EEG đồng bộ trong lab để huấn luyện khả năng cảnh báo sớm. Agents hỗ trợ và
 IoT triển khai sau phần mô hình.
 
+Checklist thực thi, mục tiêu accuracy/macro-F1 và tiến độ từng mốc được theo
+dõi tại [14_model_roadmap.md](14_model_roadmap.md). Tài liệu này giải thích
+thiết kế và cơ sở của luồng camera–EEG–ban đêm.
+
 ## Hiện trạng và mục tiêu
 
 Repo có MediaPipe nhận diện khuôn mặt, đặc trưng mắt/miệng/tư thế đầu, temporal

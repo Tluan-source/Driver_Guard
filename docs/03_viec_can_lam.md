@@ -1,5 +1,10 @@
 # 03 — Việc cần làm (checklist cho nhóm)
 
+> Lộ trình đang theo dõi từ 01/10/2026 nằm tại
+> [14_model_roadmap.md](14_model_roadmap.md): tối ưu camera → ban đêm → EEG
+> cảnh báo sớm → Agents → IoT. Checklist bên dưới là kế hoạch hệ thống ban đầu,
+> giữ để tham khảo; trạng thái và thứ tự hiện tại theo roadmap mới.
+
 Đánh dấu `[x]` khi xong. Các mục **[BẠN]** là việc máy của Claude không làm được (cần internet trên máy bạn,
 tài khoản, chữ ký, hoặc con người thật).
 
