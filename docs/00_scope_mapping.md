@@ -7,12 +7,17 @@
 > Mốc tuần theo kế hoạch 1 học kỳ của GVHD (mục 7.3): GĐ0 tuần 1–2 · GĐ1 tuần 3–6 · GĐ2 tuần 7–10 ·
 > GĐ3 tuần 10–13 · GĐ4 tuần 13–15 · GĐ5 tuần 15–16.
 
+> Cập nhật 01/10/2026 theo yêu cầu hiện tại: ưu tiên model camera học theo thời gian,
+> kiểm chứng thiếu sáng/ban đêm, rồi EEG đồng bộ giám sát để fine-tune cảnh báo sớm;
+> Agents và IoT sau model. [Kế hoạch camera–EEG–ban đêm](10_camera_eeg_night_plan.md)
+> là phạm vi triển khai hiện tại; các mốc học kỳ bên dưới là đề xuất lịch sử.
+
 ## Thực trạng / Vấn đề / Ràng buộc
 
 | # | Yêu cầu trong đề bài | Ô | Xử lý & lý do | Ở đâu trong code |
 |---|---|---|---|---|
 | 1 | Camera **RGB** | (a) | Camera trước điện thoại / webcam | `capture/source.py` |
-| 2 | Camera **hồng ngoại** (IR) | (c) cho MVP · (b) nếu mua được camera IR | Không có phần cứng IR; DMD 2026 đã gỡ dữ liệu IR → không có dữ liệu để phát triển. Kiến trúc không phụ thuộc loại camera (chỉ cần landmark) | — |
+| 2 | Camera **hồng ngoại** (NIR) | (a) xác định dữ liệu/đánh giá · (b) tích hợp phần cứng IoT | Cần NIR kèm chiếu IR khi cabin tối sâu. Chưa có phần cứng và chưa kiểm chứng Face Landmarker trên NIR; không mặc định khả năng RGB chuyển được sang NIR | `docs/10_camera_eeg_night_plan.md` |
 | 3 | Nhắm mắt kéo dài (PERCLOS) | (a) | Đổi tên thành **PERCLOS-proxy** (ước lượng từ EAR, không phải PERCLOS đo bằng IR) — GVHD 9.1 | `temporal/trackers.py` `EyeStateTracker` |
 | 4 | Ngáp | (a) | Chỉ là **bằng chứng yếu** → tối đa CAUTION (GVHD 9.2) | `YawnTracker` |
 | 5 | Gục đầu | (a) | Phát hiện gật đầu nhanh (pitch giảm đột ngột) | `HeadTracker` (nod) |
@@ -27,7 +32,7 @@
 | 14 | Chống báo động giả | (a) | Persistence, hysteresis, cooldown, **hiệu chỉnh theo tài xế** (Hướng 1) | `calibration/`, `risk/` |
 | 15 | Realtime ≥ 15 FPS trên edge | (b) đo ở GĐ1–GĐ3 | Chỉ công nhận số đo **trên Android**; laptop không phải nghiệm thu | `evaluation/runtime_bench.py` |
 | 16 | AI chỉ cảnh báo, không can thiệp lái | (a) | Không có đầu ra điều khiển xe (by design) | — |
-| 17 | Hoạt động ban đêm | (c) cho RGB trong cabin tối · (a) đô thị đủ sáng | Không IR thì landmark không tin cậy trong tối → hệ thống báo SENSOR_DEGRADED thay vì đoán | `perception/quality.py` |
+| 17 | Hoạt động ban đêm | (a) yêu cầu chính của model camera · (b) NIR phần cứng | Tăng sáng RGB có giới hạn khi còn chi tiết; chất lượng đo trên ảnh gốc, không đủ tín hiệu → SENSOR_DEGRADED. Cần train/test thiếu sáng thật; tối sâu cần NIR/IR | `perception/illumination.py`, `perception/quality.py` |
 | 18 | Người đeo kính | (b) GĐ3 | Kính cận: đưa vào ma trận robustness. Kính râm: → SENSOR_DEGRADED | — |
 
 ## Kỹ thuật
@@ -58,7 +63,7 @@
 | 35 | Metric precision / recall / false positive | (a) | Báo cáo **đường cong recall theo false alerts/giờ**, chọn điểm vận hành trên validation (GVHD 8.3) | `evaluation/` |
 | 36 | Lượng tử hoá để tối ưu FPS/độ trễ, chạy offline | (b) GĐ3 · offline (a) | Hệ thống không cần mạng để phát hiện | — |
 | 37 | **Hiệu chỉnh cá nhân hoá theo tài xế** | (a) — **đóng góp AI chính** | Hướng 1 của GVHD: baseline EAR thích ứng, so sánh với ngưỡng cố định | `calibration/baseline.py` |
-| 38 | Eval nhiều điều kiện ánh sáng | (b) GĐ3 | Ma trận 19 kịch bản robustness | `docs/02_data_plan.md` |
+| 38 | Eval nhiều điều kiện ánh sáng | (a) cùng giai đoạn model camera | Báo metrics/coverage/latency riêng ban ngày, RGB thiếu sáng và NIR thật; so sánh bật/tắt enhancement. Augmentation ảnh tối không thay test ban đêm thật | `docs/10_camera_eeg_night_plan.md` |
 | 39 | Giám sát đội xe nhiều thiết bị | (b) GĐ4 | API đã theo `driver_id`/`trip_id`; gom nhiều thiết bị khi chạy thử | `api/app.py` `/trips` |
 | 40 | OTA cập nhật ngưỡng/model | (c) | Cần hạ tầng ký số + phân phối; HITL cục bộ đã đáp ứng nhu cầu chỉnh ngưỡng trong phạm vi đồ án | — |
 | 41 | Guardrails chống lạm dụng dữ liệu khuôn mặt | (a) | Không nhận diện danh tính, không embedding, `driver_id` giả danh, phân quyền, xoá theo `retention_days`, debug recording tắt | `privacy/`, `storage/` |

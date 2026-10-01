@@ -1,18 +1,23 @@
 """Capture + perception with a FAKE landmarker (the real MediaPipe model is not needed in CI)."""
 import os
 import tempfile
+from itertools import pairwise
 
 import cv2
 import numpy as np
+import pytest
 
 from driverguard.capture import VideoFileSource
 from driverguard.config import load_config
+from driverguard.engine import DriverGuardEngine
 from driverguard.io import read_features, write_features
 from driverguard.perception.extractor import PerceptionExtractor
 from driverguard.perception.face import FaceObservation
 from driverguard.perception.geometry import LEFT_EYE, MOUTH_CORNERS, MOUTH_VERTICAL, RIGHT_EYE
 from driverguard.perception.head_pose import rotation_from_euler
 from driverguard.perception.phone import PhoneObservation, phone_near_face
+from driverguard.perception.quality import face_crop_stats
+from driverguard.schemas import RiskLevel
 
 
 def _synthetic_face(eye_h: float) -> np.ndarray:
@@ -76,6 +81,62 @@ def test_extractor_signals():
     assert ex.process(None, 400, camera_ok=False).camera_ok is False
 
 
+class RecordingLandmarker(FakeLandmarker):
+    def detect(self, img, ts):
+        self.input = img
+        return super().detect(img, ts)
+
+
+class RecordingPhone(FakePhone):
+    def detect(self, img, ts):
+        self.input = img
+        return super().detect(img, ts)
+
+
+def test_low_light_detector_input_keeps_raw_quality_and_phone_pixels():
+    cfg = load_config(overrides={"runtime.phone_every_n_frames": 1})
+    lm, phone = RecordingLandmarker(), RecordingPhone()
+    ex = PerceptionExtractor(cfg, lm, phone)
+    frame = np.random.default_rng(7).integers(8, 28, (480, 640, 3), dtype=np.uint8)
+    original = frame.copy()
+    s = ex.process(frame, 0)
+    assert lm.input is not frame and lm.input.mean() > frame.mean()
+    assert phone.input is frame
+    assert np.array_equal(frame, original)
+    bbox = (s.face_x0 * 640, s.face_y0 * 480, s.face_x1 * 640, s.face_y1 * 480)
+    brightness, blur = face_crop_stats(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), bbox)
+    assert s.brightness == brightness and s.blur == blur
+    enhanced_brightness, _ = face_crop_stats(cv2.cvtColor(lm.input, cv2.COLOR_BGR2GRAY), bbox)
+    assert enhanced_brightness > s.brightness
+    assert s.face_quality < cfg.quality.min_quality
+
+
+@pytest.mark.parametrize("enhanceable", [False, True])
+def test_dark_frames_cannot_supply_valid_healthy_evidence(enhanceable):
+    cfg = load_config()
+    ex = PerceptionExtractor(cfg, RecordingLandmarker())
+    engine = DriverGuardEngine(cfg, trip_start_epoch_s=0, tz_offset_h=0)
+    frame = np.zeros((96, 128, 3), dtype=np.uint8)
+    if enhanceable:
+        frame = np.random.default_rng(7).integers(8, 28, frame.shape, dtype=np.uint8)
+    for ts in range(0, cfg.quality.degraded_after_ms + 101, 100):
+        tick = engine.step(ex.process(frame, ts))
+        assert not tick.face_valid
+        assert tick.ear_norm is None and tick.eye_closed is None
+    assert tick.risk_level == RiskLevel.SENSOR_DEGRADED
+    assert "LOW_FACE_QUALITY" in tick.reason_codes
+
+
+@pytest.mark.parametrize("disabled", [False, True])
+def test_extractor_bright_and_disabled_paths_preserve_detector_input(disabled):
+    cfg = load_config(overrides={"low_light.enabled": not disabled})
+    lm = RecordingLandmarker()
+    ex = PerceptionExtractor(cfg, lm)
+    frame = _frame() if not disabled else np.full((96, 128, 3), 35, np.uint8)
+    ex.process(frame, 0)
+    assert lm.input is frame
+
+
 def test_phone_far_from_face():
     assert not phone_near_face((0.0, 0.8, 0.1, 0.95), (0.4, 0.2, 0.6, 0.6), 1.6)
 
@@ -91,7 +152,7 @@ def test_video_source_timestamps_and_subsampling():
         ts = [f.ts_ms for f in src.frames()]
         src.close()
     assert 44 <= len(ts) <= 46
-    assert all(b > a for a, b in zip(ts, ts[1:]))
+    assert all(b > a for a, b in pairwise(ts))
     assert abs((ts[1] - ts[0]) - 67) <= 1
 
 

@@ -54,6 +54,23 @@ và [báo cáo v3.1](docs/09_model_v3_results.md) để chọn đúng checkpoint
 
 ### Camera Và Hệ Thống
 
+Phạm vi hiện tại: **model camera học theo thời gian → EEG đồng bộ giám sát để fine-tune
+cảnh báo sớm → model cuối chỉ dùng camera**, bao gồm điều kiện thiếu sáng/ban đêm.
+Đã thêm gamma/CLAHE có giới hạn trước Face Landmarker, giữ kiểm tra chất lượng trên ảnh gốc;
+tối sâu cần camera NIR và chiếu IR. Đã train **camera v1** trên 354 clip của 59 người:
+test theo người có AUROC **0,6444**, balanced accuracy **0,55**, chưa đủ tin cậy để
+cảnh báo thực tế. EEG supervision và độ chính xác ban đêm chưa được kiểm chứng.
+Xem [hướng dẫn test camera](docs/11_camera_model_usage.md),
+[kết quả camera v1](docs/12_camera_model_results.md) và
+[kế hoạch camera–EEG–ban đêm](docs/10_camera_eeg_night_plan.md).
+
+```powershell
+.venv\Scripts\python.exe -m driverguard.learning.camera_cli run --checkpoint models/camera_drowsiness_v1/model.pt --source 0 --show --jsonl outputs/camera_live.jsonl
+```
+
+Checkpoint và dữ liệu v1 đã có cục bộ trên máy này, được Git ignore. Lệnh trên dùng
+model đã học; các lệnh `driverguard run` bên dưới dùng luồng luật camera hiện có.
+
 ```powershell
 py -3.11 -m venv .venv ; .venv\Scripts\activate
 pip install -e ".[api,eval,dev]"

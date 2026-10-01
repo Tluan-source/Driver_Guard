@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from pydantic import ValidationError
 
-from driverguard.config import TUNABLE_KEYS, apply_updates, load_config, tunable_schema
+from driverguard.config import TUNABLE_KEYS, LowLightCfg, apply_updates, load_config, tunable_schema
 from driverguard.risk.context import TripContext
 from driverguard.trip.memory import TripMemory, theil_sen_slope
 from driverguard.vehicle import SimulatedCanBus, decode_speed_frame, encode_speed_frame
@@ -10,8 +11,20 @@ from driverguard.vehicle import SimulatedCanBus, decode_speed_frame, encode_spee
 
 def test_yaml_matches_defaults_and_validates():
     cfg = load_config()
+    assert cfg.low_light == LowLightCfg()
     assert cfg.eye.microsleep_ms > cfg.eye.long_closure_ms
     assert set(cfg.risk.weights) == {"eye", "perclos", "yawn", "head", "phone"}
+
+
+@pytest.mark.parametrize("updates", [
+    {"low_light.min_usable_brightness": 60},
+    {"low_light.brightness_trigger": 8},
+    {"low_light.gamma": 0.1},
+    {"low_light.clahe_clip_limit": 5},
+])
+def test_low_light_config_rejects_invalid_enhancement_bounds(updates):
+    with pytest.raises(ValidationError):
+        load_config(overrides=updates)
 
 
 def test_hitl_whitelist_and_bounds():

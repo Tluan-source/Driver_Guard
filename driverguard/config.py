@@ -34,6 +34,20 @@ class ModelsCfg(_M):
     phone_backend: str = "mediapipe"
 
 
+class LowLightCfg(_M):
+    enabled: bool = True
+    brightness_trigger: float = Field(60.0, gt=0, le=255)
+    min_usable_brightness: float = Field(8.0, ge=0, lt=255)
+    gamma: float = Field(0.65, ge=0.3, le=1.0)
+    clahe_clip_limit: float = Field(2.0, ge=1.0, le=4.0)
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.min_usable_brightness >= self.brightness_trigger:
+            raise ValueError("low_light.min_usable_brightness must be below brightness_trigger")
+        return self
+
+
 class QualityCfg(_M):
     min_face_width_ratio: float = 0.10
     brightness_min: float = 40
@@ -174,6 +188,7 @@ class PrivacyCfg(_M):
 class DriverGuardConfig(_M):
     runtime: RuntimeCfg = RuntimeCfg()
     models: ModelsCfg = ModelsCfg()
+    low_light: LowLightCfg = LowLightCfg()
     quality: QualityCfg = QualityCfg()
     calibration: CalibrationCfg = CalibrationCfg()
     eye: EyeCfg = EyeCfg()
