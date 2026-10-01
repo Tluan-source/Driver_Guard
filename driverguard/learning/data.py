@@ -24,6 +24,11 @@ class Session:
     y: np.ndarray
     feature_path: Path
     label_path: Path
+    quality_valid: np.ndarray | None = None
+    quality_reason: np.ndarray | None = None
+    preprocessing: str = "legacy_car"
+    channel_names: tuple[str, ...] | None = None
+    window_end_seconds: np.ndarray | None = None
 
 
 def read_eeg_features(path: str | Path, feature_key: str = FEATURE_KEY,
@@ -50,6 +55,88 @@ def read_eeg_features(path: str | Path, feature_key: str = FEATURE_KEY,
     return np.asarray(x, dtype=np.float32)
 
 
+def _archive_preprocessing(archive, path: Path) -> str:
+    if "preprocessing" not in archive:
+        return "legacy_car"
+    value = np.asarray(archive["preprocessing"])
+    if value.shape != () or value.dtype.kind not in "SU":
+        raise ValueError(f"Preprocessing must be a scalar string in {path}")
+    preprocessing = value.item()
+    if isinstance(preprocessing, bytes):
+        preprocessing = preprocessing.decode("utf-8")
+    if preprocessing not in {"legacy_car", "robust_v1"}:
+        raise ValueError(f"Unsupported EEG preprocessing {preprocessing!r} in {path}")
+    return preprocessing
+
+
+def _archive_channels(archive, path: Path) -> tuple[str, ...] | None:
+    if "channel_names" not in archive:
+        return None
+    values = np.asarray(archive["channel_names"])
+    if values.ndim != 1 or not len(values) or values.dtype.kind not in "SU":
+        raise ValueError(f"Invalid EEG channel names in {path}")
+    channels = tuple(value.decode("utf-8") if isinstance(value, bytes) else str(value) for value in values)
+    if any(not channel for channel in channels) or len(set(channels)) != len(channels):
+        raise ValueError(f"Nonempty unique EEG channel names required in {path}")
+    return channels
+
+
+def read_feature_contract(
+    path: str | Path, feature_key: str = FEATURE_KEY, n_features: int | None = None, *,
+    expected_preprocessing: str | None = None, expected_channels: tuple[str, ...] | list[str] | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
+    """Read features and acceptance flags without loading any labels.
+
+    Return (x, quality_valid, quality_reason, window_end_seconds). Legacy files
+    default to all accepted; robust_v1 files must carry their quality contract.
+    Invalid robust rows remain in place and are never usable model observations.
+    """
+    path = Path(path)
+    x = read_eeg_features(path, feature_key, n_features)
+    preprocessing, channels = "legacy_car", None
+    accepted = np.ones(len(x), dtype=bool)
+    reasons = np.full(len(x), "", dtype="U1")
+    ends = None
+    if path.suffix == ".npz":
+        with np.load(path, allow_pickle=False) as archive:
+            preprocessing = _archive_preprocessing(archive, path)
+            channels = _archive_channels(archive, path)
+            robust = preprocessing == "robust_v1"
+            if robust and (channels is None or any(key not in archive for key in (
+                "quality_valid", "quality_reason_code", "window_end_seconds",
+            ))):
+                raise ValueError(f"robust_v1 requires channel, quality, and timestamp metadata in {path}")
+            if "quality_valid" in archive:
+                accepted = np.asarray(archive["quality_valid"])
+                if accepted.dtype.kind != "b" or accepted.shape != (len(x),):
+                    raise ValueError(f"quality_valid must be a boolean window mask in {path}")
+                accepted = accepted.copy()
+            if "quality_reason_code" in archive:
+                codes = np.asarray(archive["quality_reason_code"])
+                if codes.shape != (len(x),) or codes.dtype.kind not in "iu" or np.any((codes < 0) | (codes > 7)):
+                    raise ValueError(f"Invalid quality reason codes in {path}")
+                if "quality_valid" not in archive or not np.array_equal(accepted, codes == 0):
+                    raise ValueError(f"Quality acceptance and reason codes disagree in {path}")
+                names = ((1, "too_many_bad_channels"), (2, "nonfinite"), (4, "flat_reference"))
+                reasons = np.asarray([",".join(name for bit, name in names if int(code) & bit) for code in codes])
+            elif not accepted.all():
+                reasons = np.where(accepted, "", "invalid_sensor_quality")
+            if "quality_bad_channel_mask" in archive:
+                bad = np.asarray(archive["quality_bad_channel_mask"])
+                if channels is None or bad.dtype.kind != "b" or bad.shape != (len(x), len(channels)):
+                    raise ValueError(f"Invalid bad-channel quality mask in {path}")
+            if "window_end_seconds" in archive:
+                ends = np.asarray(archive["window_end_seconds"], dtype=np.float64)
+                if (ends.shape != (len(x),) or not np.isfinite(ends).all() or np.any(ends < 0)
+                        or np.any(np.diff(ends) <= 0)):
+                    raise ValueError(f"Window timestamps must be finite and strictly increasing in {path}")
+    if expected_preprocessing is not None and preprocessing != expected_preprocessing:
+        raise ValueError(f"EEG preprocessing mismatch in {path}: expected {expected_preprocessing}, got {preprocessing}")
+    if expected_channels is not None and channels != tuple(expected_channels):
+        raise ValueError(f"EEG channel order mismatch in {path}")
+    return x, accepted, reasons, ends
+
+
 def load_sessions(root: str | Path, feature_key: str = FEATURE_KEY) -> list[Session]:
     root = Path(root)
     sessions = []
@@ -57,6 +144,7 @@ def load_sessions(root: str | Path, feature_key: str = FEATURE_KEY) -> list[Sess
         metadata_path = root / "dataset_metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
         expected_channels = metadata.get("channel_names")
+        expected_preprocessing = metadata.get("preprocessing")
         manifest = json.loads((root / "sessions.json").read_text(encoding="utf-8"))
         seen_paths = set()
         for item in manifest:
@@ -66,22 +154,26 @@ def load_sessions(root: str | Path, feature_key: str = FEATURE_KEY) -> list[Sess
             if path in seen_paths:
                 raise ValueError("Duplicate feature path assigned to multiple sessions or subjects")
             seen_paths.add(path)
-            x = read_eeg_features(path, n_features=metadata.get("n_features"))
+            x, accepted, reasons, ends = read_feature_contract(
+                path, n_features=metadata.get("n_features"), expected_preprocessing=expected_preprocessing,
+                expected_channels=expected_channels,
+            )
             with np.load(path, allow_pickle=False) as archive:
                 y = np.asarray(archive["y"], dtype=np.float32).reshape(-1)
-                if expected_channels is not None and (
-                    "channel_names" not in archive or archive["channel_names"].tolist() != expected_channels
-                ):
-                    raise ValueError(f"EEG channel order mismatch in {path}")
+                preprocessing = _archive_preprocessing(archive, path)
+                channels = _archive_channels(archive, path)
             if len(x) != len(y) or not np.isfinite(y).all() or np.any((y < 0) | (y > 1)):
                 raise ValueError(f"Invalid targets in {path}")
             if not item["session_id"] or not item["subject"]:
                 raise ValueError("Nonempty session and subject identifiers required")
-            sessions.append(Session(str(item["session_id"]), str(item["subject"]), x, y, path, path))
+            sessions.append(Session(str(item["session_id"]), str(item["subject"]), x, y, path, path,
+                                    accepted, reasons, preprocessing, channels, ends))
         if not sessions or len({s.session_id for s in sessions}) != len(sessions):
             raise ValueError("Nonempty unique session IDs required")
         if len({s.x.shape[1] for s in sessions}) != 1:
             raise ValueError("All sessions must share the feature schema")
+        if len({s.preprocessing for s in sessions}) != 1 or len({s.channel_names for s in sessions}) != 1:
+            raise ValueError("All sessions must share the preprocessing and EEG channel order")
         return sessions
     for path in sorted((root / "DE").glob("*.mat")):
         match = re.fullmatch(r"(\d+)_(\d{8})(?:_[A-Za-z0-9_]+)?", path.stem)
@@ -131,6 +223,8 @@ def pack_sessions(sessions: list[Session], subjects: list[str], context: int):
     selected = [s for s in sessions if s.subject in subjects]
     if not selected:
         raise ValueError("Split contains no sessions")
+    if any(s.quality_valid is not None and not np.all(s.quality_valid) for s in selected):
+        raise ValueError("Rejected EEG windows cannot be packed by the legacy training path; use the improve workflow")
     return (
         np.concatenate([causal_windows(s.x, context) for s in selected]),
         np.concatenate([s.y for s in selected]),

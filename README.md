@@ -45,6 +45,13 @@ Checkpoint và dữ liệu đã có trên máy làm việc, được Git ignore.
 Xem [hướng dẫn mô hình](docs/05_model_usage.md), [kết quả thực nghiệm](docs/06_model_results.md)
 và [kế hoạch nghiên cứu](docs/04_model_research_plan.md). Agents và IoT chưa triển khai.
 
+Đã có bản thử nghiệm **v3.1** với calibration theo nhóm người, pipeline EEG robust
+và nested LOSO. Đánh giá trung bình 12 người: tham chiếu CAR AUROC **0,6494**,
+BA **0,5667**; robust AUROC **0,5426**, BA **0,5251**, coverage **98,28%**.
+Robust chưa cải thiện khả năng tổng quát; v2 được giữ nguyên. Model và CSV mới dùng
+để test/nghiên cứu, chưa dùng cho cảnh báo. Xem [hướng dẫn v3.1](docs/08_model_v3_usage.md)
+và [báo cáo v3.1](docs/09_model_v3_results.md) để chọn đúng checkpoint và dữ liệu metrics.
+
 ### Camera Và Hệ Thống
 
 ```powershell

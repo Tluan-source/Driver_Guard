@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from driverguard.learning.eeg import CHANNEL_NAMES, bandpower_window, extract_cnt
+from driverguard.learning.eeg import CHANNEL_NAMES, bandpower_window, extract_cnt, extract_cnt_quality
 from scripts.prepare_fatigue_eeg import unique_recordings
 
 
@@ -98,6 +98,40 @@ def test_cnt_reader_rejects_impossible_header_before_loading_samples(monkeypatch
     with pytest.raises(ValueError, match="physical file size"):
         extract_cnt(path)
     assert not raw.reads and raw.closed
+
+
+def test_robust_cnt_keeps_all_complete_windows_and_quality_masks(monkeypatch, tmp_path):
+    raw = FakeRaw()
+    path, _ = mock_cnt(monkeypatch, tmp_path, raw)
+    x, ends, channels, quality = extract_cnt_quality(path)
+    assert x.shape == (2, 150)
+    np.testing.assert_array_equal(ends, [4, 8])
+    assert channels == list(CHANNEL_NAMES)
+    assert quality["quality_bad_channel_mask"].shape == (2, 30)
+    assert quality["quality_valid"].dtype == bool
+    assert raw.reads == [(0, 4000), (4000, 8000)]
+    assert raw.closed
+
+
+def test_robust_cnt_preserves_invalid_window_timestamp_for_abstention(monkeypatch, tmp_path):
+    raw = FakeRaw()
+    get_data = raw.get_data
+
+    def contaminated_data(picks, start, stop):
+        values = get_data(picks, start, stop)
+        if start == 0:
+            values[:7] = 0.0
+        return values
+
+    raw.get_data = contaminated_data
+    path, _ = mock_cnt(monkeypatch, tmp_path, raw)
+    x, ends, _, quality = extract_cnt_quality(path)
+    np.testing.assert_array_equal(ends, [4, 8])
+    np.testing.assert_array_equal(quality["quality_valid"], [False, True])
+    assert quality["quality_reason_code"].dtype == np.uint8
+    assert quality["quality_reason_code"][0] & 1
+    np.testing.assert_array_equal(x[0], np.zeros(150))
+    assert np.any(x[1] != 0)
 
 
 def test_identical_duplicate_recordings_are_counted_once(tmp_path):

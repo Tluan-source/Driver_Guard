@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .data import FEATURE_KEY, dataset_manifest, load_sessions, pack_sessions
+from .data import FEATURE_KEY, dataset_manifest, load_sessions, pack_sessions, read_feature_contract
 from .metrics import bootstrap_group_ci, grouped_metrics
 from .model import VigilancePredictor
 from .train import train, write_json, write_predictions
@@ -28,6 +28,13 @@ def main(argv=None) -> int:
     p.add_argument("--bootstrap", type=int, default=300)
     p.add_argument("--feature-key", choices=["de_movingAve"], default=FEATURE_KEY)
     p.add_argument("--feature-transform", choices=["absolute", "relative_log_power"], default=None)
+    p = sub.add_parser("improve", help="quality-aware ensemble, nested subject LOSO and deployment checkpoint")
+    p.add_argument("--baseline-data", default="data/features/fatigue_eeg")
+    p.add_argument("--data", default="data/features/fatigue_eeg_robust_v1")
+    p.add_argument("--out", default="models/eeg_vigilance_v3_1")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--threads", type=int, default=4)
+    p.add_argument("--bootstrap", type=int, default=1000)
     p = sub.add_parser("predict", help="EEG feature NPZ/NPY/MAT or original CNT -> metadata CSV")
     p.add_argument("--checkpoint", required=True)
     source = p.add_mutually_exclusive_group(required=True)
@@ -46,38 +53,68 @@ def main(argv=None) -> int:
               feature_key=args.feature_key, bootstrap=args.bootstrap, threads=args.threads,
               feature_transform=args.feature_transform)
         return 0
+    if args.command == "improve":
+        from .improvement import improve
+
+        improve(args.baseline_data, args.data, args.out, seed=args.seed,
+                bootstrap=args.bootstrap, threads=args.threads)
+        return 0
     predictor = VigilancePredictor(args.checkpoint)
     output = Path(args.out)
     if args.command == "predict":
+        metadata = predictor.meta.get("dataset_metadata", {})
+        preprocessing = predictor.preprocessing
         if args.cnt:
-            from .eeg import extract_cnt
+            from .eeg import extract_cnt, extract_cnt_quality
 
-            metadata = predictor.meta["dataset_metadata"]
             if metadata.get("target") != "fatigue" or metadata.get("n_features") != 150:
                 raise ValueError("CNT inference requires the original driver-fatigue spectral feature contract")
-            x, ends, channels = extract_cnt(args.cnt, metadata["window_seconds"])
-            if channels != metadata["channel_names"]:
+            if preprocessing == "robust_v1":
+                from .quality import ROBUST_PREPROCESSING
+
+                if metadata.get("preprocessing_config") != ROBUST_PREPROCESSING:
+                    raise ValueError("Checkpoint quality configuration differs from the CNT extractor")
+                x, ends, channels, quality = extract_cnt_quality(args.cnt, metadata["window_seconds"])
+                valid = quality["quality_valid"]
+                bits = ROBUST_PREPROCESSING["window_reason_bits"]
+                reasons = [",".join(name for name, bit in bits.items() if int(code) & bit)
+                           for code in quality["quality_reason_code"]]
+            elif preprocessing == "legacy_car":
+                x, ends, channels = extract_cnt(args.cnt, metadata["window_seconds"])
+                valid, reasons = np.ones(len(x), dtype=bool), [""] * len(x)
+            else:
+                raise ValueError("Unsupported CNT preprocessing contract")
+            if tuple(channels) != tuple(predictor.channel_names or ()):
                 raise ValueError("CNT channel order differs from the checkpoint")
-            pred = predictor.predict(x)
+            pred = predictor.predict_features(x, valid)
         else:
-            pred = predictor.predict_file(args.features)
-            seconds = predictor.meta["dataset_metadata"].get("window_seconds")
-            ends = np.arange(1, len(pred) + 1) * seconds if seconds else [None] * len(pred)
-            if Path(args.features).suffix == ".npz":
-                with np.load(args.features, allow_pickle=False) as archive:
-                    if "window_end_seconds" in archive:
-                        ends = archive["window_end_seconds"]
-                    if "channel_names" in archive and archive["channel_names"].tolist() != predictor.meta["dataset_metadata"].get("channel_names"):
-                        raise ValueError("Feature channel order differs from the checkpoint")
+            x, valid, reasons, ends = read_feature_contract(
+                args.features, predictor.feature_key, predictor.n_features,
+                expected_preprocessing=preprocessing,
+                expected_channels=predictor.channel_names)
+            pred = predictor.predict_features(x, valid)
+            if ends is None:
+                seconds = metadata.get("window_seconds")
+                ends = np.arange(1, len(pred) + 1) * seconds if seconds else [None] * len(pred)
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("w", encoding="utf-8", newline="") as stream:
             writer = csv.writer(stream)
-            writer.writerow(["window_index", "window_end_seconds", "prediction", "reduced_vigilance_pred"])
-            writer.writerows(zip(range(len(pred)), ends, pred.tolist(), predictor.decisions(pred).astype(int).tolist()))
+            writer.writerow(["window_index", "window_end_seconds", "prediction", "reduced_vigilance_pred",
+                             "quality_valid", "sensor_status", "abstention_reason"])
+            for index, (end, score, accepted, reason) in enumerate(zip(ends, pred, valid, reasons)):
+                writer.writerow([index, end, float(score) if accepted else None,
+                                 int(score >= predictor.meta["decision_threshold"]) if accepted else None,
+                                 int(accepted), "EEG_VALID" if accepted else "SENSOR_DEGRADED", reason])
         print(json.dumps({"output": str(output), "n_windows": len(pred),
-                          "mean_prediction": float(np.mean(pred)), "target": predictor.meta["target"],
+                          "n_accepted": int(np.sum(valid)), "coverage": float(np.mean(valid)),
+                          "mean_prediction": float(np.mean(pred[valid])) if np.any(valid) else None,
+                          "target": predictor.meta["target"],
                           "decision_threshold": predictor.meta["decision_threshold"]}))
         return 0
+    if "split" not in predictor.meta or not predictor.meta["split"].get("test"):
+        raise ValueError("This deployment model uses the full development cohort and has no frozen test split. "
+                         "Use robust_nested_loso_predictions.csv for development metrics; "
+                         "use predict on new independent EEG recordings for external testing.")
     sessions = load_sessions(args.data, predictor.feature_key)
     subjects = predictor.meta["split"]["test"]
     if set(subjects) != {s.subject for s in sessions if s.subject in subjects}:

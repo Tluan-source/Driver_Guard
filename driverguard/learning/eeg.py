@@ -35,6 +35,10 @@ def bandpower_window(volts: np.ndarray, sample_rate: float) -> np.ndarray:
     referenced = (samples - samples.mean(axis=0, keepdims=True)) * 1e6
     if not np.any(np.ptp(referenced, axis=1) > 0):
         raise ValueError("All EEG channels are flat after common average reference")
+    return _bandpowers_uv(referenced, sample_rate)
+
+
+def _bandpowers_uv(referenced: np.ndarray, sample_rate: float) -> np.ndarray:
     frequencies, psd = welch(
         referenced,
         fs=sample_rate,
@@ -52,6 +56,27 @@ def bandpower_window(volts: np.ndarray, sample_rate: float) -> np.ndarray:
         bandpowers.append(np.sum(psd[:, mask], axis=1) * step_hz)
     powers = np.stack(bandpowers, axis=1)
     return np.log10(np.maximum(powers, 1e-12)).reshape(-1).astype(np.float32)
+
+
+def robust_bandpower_window(
+    volts: np.ndarray, sample_rate: float
+) -> tuple[np.ndarray, dict]:
+    """Extract robust_v1 spectral features and an explicit acceptance mask."""
+    from .quality import robust_reference_window
+
+    if sample_rate < 100 or not np.isfinite(sample_rate):
+        raise ValueError("Sample rate must be finite and at least 100 Hz")
+    samples = np.asarray(volts, dtype=np.float64)
+    if samples.ndim != 2 or samples.shape[0] != len(CHANNEL_NAMES):
+        raise ValueError("EEG window must contain the 30 ordered contract channels")
+    if samples.shape[1] < round(sample_rate):
+        raise ValueError("EEG window must have at least one second of samples")
+    referenced, quality = robust_reference_window(samples, CHANNEL_NAMES)
+    features = (
+        _bandpowers_uv(referenced, sample_rate)
+        if quality["quality_valid"] else np.zeros(len(CHANNEL_NAMES) * len(BANDS), dtype=np.float32)
+    )
+    return features, quality
 
 
 def _read_cnt(path: str | Path):
@@ -125,3 +150,40 @@ def extract_cnt(path: str | Path, window_seconds: float = 4.0
     finally:
         raw.close()
     return x, ends, list(CHANNEL_NAMES)
+
+
+def extract_cnt_quality(
+    path: str | Path, window_seconds: float = 4.0, *, preprocessing: str = "robust_v1"
+) -> tuple[np.ndarray, np.ndarray, list[str], dict[str, np.ndarray]]:
+    """Extract windows with quality masks, retaining invalid windows for abstention.
+
+    The original extract_cnt/bandpower_window remain the legacy CAR contract.
+    robust_v1 uses fixed unlabeled artifact checks, a valid-electrode median
+    reference, and montage interpolation. Invalid feature rows are placeholders.
+    """
+    if preprocessing != "robust_v1":
+        raise ValueError(f"Unsupported quality preprocessing: {preprocessing}")
+    if not np.isfinite(window_seconds) or window_seconds < 1:
+        raise ValueError("window_seconds must be finite and at least one second")
+    raw = _read_cnt(path)
+    try:
+        sample_rate = float(raw.info["sfreq"])
+        window_samples = round(window_seconds * sample_rate)
+        count = int(raw.n_times) // window_samples
+        if count == 0:
+            raise ValueError("Recording is shorter than one complete EEG window")
+        features, quality_rows = [], []
+        for index in range(count):
+            start = index * window_samples
+            values = raw.get_data(picks=list(CHANNEL_NAMES), start=start, stop=start + window_samples)
+            row, quality = robust_bandpower_window(values, sample_rate)
+            features.append(row)
+            quality_rows.append(quality)
+        x = np.stack(features)
+        ends = np.arange(1, count + 1, dtype=np.float64) * window_samples / sample_rate
+        quality_arrays = {key: np.asarray([row[key] for row in quality_rows]) for key in quality_rows[0]}
+        quality_arrays["quality_reason_code"] = quality_arrays["quality_reason_code"].astype(np.uint8)
+        quality_arrays["quality_good_channel_count"] = quality_arrays["quality_good_channel_count"].astype(np.int16)
+    finally:
+        raw.close()
+    return x, ends, list(CHANNEL_NAMES), quality_arrays

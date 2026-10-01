@@ -9,7 +9,14 @@ from pathlib import Path
 
 import numpy as np
 
-from driverguard.learning.eeg import BANDS, CHANNEL_NAMES, cnt_recording_info, extract_cnt
+from driverguard.learning.eeg import (
+    BANDS,
+    CHANNEL_NAMES,
+    cnt_recording_info,
+    extract_cnt,
+    extract_cnt_quality,
+)
+from driverguard.learning.quality import ROBUST_PREPROCESSING
 
 PAPER = "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0188756"
 
@@ -46,9 +53,15 @@ def unique_recordings(root: Path) -> tuple[list[Path], list[dict]]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw", type=Path, default=Path("data/raw/driver_fatigue_eeg"))
-    parser.add_argument("--out", type=Path, default=Path("data/features/fatigue_eeg"))
+    parser.add_argument("--out", type=Path)
     parser.add_argument("--window-seconds", type=float, default=4.0)
+    parser.add_argument("--preprocessing", choices=("legacy_car", "robust_v1"), default="legacy_car")
     args = parser.parse_args()
+    baseline = Path("data/features/fatigue_eeg")
+    if args.out is None:
+        args.out = baseline if args.preprocessing == "legacy_car" else Path("data/features/fatigue_eeg_robust_v1")
+    if args.preprocessing == "robust_v1" and args.out.resolve() == baseline.resolve():
+        raise ValueError("robust_v1 must use a separate output directory from the legacy baseline")
     sources, duplicates = unique_recordings(args.raw)
     if not sources:
         raise ValueError(f"No CNT recordings under {args.raw}; run download_driver_fatigue_eeg.py first")
@@ -67,15 +80,21 @@ def main() -> None:
         session_id = f"subject_{int(subject):02d}_{state}"
         target = args.out / f"{session_id}.npz"
         recording = cnt_recording_info(source)
-        x, ends, channels = extract_cnt(source, args.window_seconds)
+        quality = {}
+        if args.preprocessing == "robust_v1":
+            x, ends, channels, quality = extract_cnt_quality(source, args.window_seconds)
+        else:
+            x, ends, channels = extract_cnt(source, args.window_seconds)
         np.savez_compressed(
             target,
             x=x,
             y=np.full(x.shape[0], label, dtype=np.float32),
             window_end_seconds=ends,
             channel_names=np.asarray(channels),
+            preprocessing=np.asarray(args.preprocessing),
+            **quality,
         )
-        sessions.append({
+        session = {
             "session_id": session_id,
             "subject": f"subject_{int(subject):02d}",
             "path": target.name,
@@ -84,7 +103,22 @@ def main() -> None:
             "source": str(source),
             "source_cnt_sha256": sha256(source),
             **recording,
-        })
+        }
+        if quality:
+            session["quality"] = {
+                "accepted_windows": int(quality["quality_valid"].sum()),
+                "rejected_windows": int((~quality["quality_valid"]).sum()),
+                "bad_channel_percent": float(quality["quality_bad_channel_mask"].mean() * 100),
+                "channel_bad_window_percent": {
+                    name: float(quality["quality_bad_channel_mask"][:, index].mean() * 100)
+                    for index, name in enumerate(channels)
+                },
+                "invalid_window_reason_counts": {
+                    reason: int(np.count_nonzero(quality["quality_reason_code"] & bit))
+                    for reason, bit in ROBUST_PREPROCESSING["window_reason_bits"].items()
+                },
+            }
+        sessions.append(session)
         print(f"{session_id}: {recording['n_samples']} samples, {x.shape[0]} windows, "
               f"{x.shape[1]} features", flush=True)
     subject_ids = {session["subject"] for session in sessions}
@@ -116,6 +150,7 @@ def main() -> None:
         "window_seconds": args.window_seconds,
         "sample_rate": 1000.0,
         "sample_rate_hz": 1000.0,
+        "preprocessing": args.preprocessing,
         "feature_extraction": "Non-overlap recording-local windows; common average EEG reference; "
         "Welch PSD using 1-second Hann segments, 50% overlap, constant detrend; integrate [low, high) "
         "bands then log10 power in microvolt squared. Channel-major, band-minor order. No future filtering.",
@@ -138,6 +173,29 @@ def main() -> None:
         "window_count": sum(session["windows"] for session in sessions),
         "split_rule": "Subject-disjoint; keep both normal and fatigue recordings of a person together",
     }
+    if args.preprocessing == "robust_v1":
+        metadata["preprocessing_config"] = ROBUST_PREPROCESSING
+        metadata["feature_extraction"] = (
+            "Non-overlap recording-local windows; per-channel median DC removal; fixed "
+            "unlabeled flat/gross/relative-scale channel checks; median reference over "
+            "accepted EEG channels; MNE standard_1020 spherical interpolation of at most "
+            "20% bad channels. Reject nonfinite, poorly covered, or flat-reference "
+            "windows; keep timestamps, original channel masks, reason codes and quality_valid. "
+            "Rejected x rows are placeholders and require abstention. Welch PSD using "
+            "1-second Hann segments, 50% overlap, constant detrend; integrate [low, high) "
+            "bands then log10 power in microvolt squared. Channel-major, band-minor "
+            "order. No future filtering and no label-driven quality thresholds."
+        )
+        metadata["quality_summary"] = {
+            "accepted_windows": sum(session["quality"]["accepted_windows"] for session in sessions),
+            "rejected_windows": sum(session["quality"]["rejected_windows"] for session in sessions),
+            "sessions_with_rejected_windows": sum(session["quality"]["rejected_windows"] > 0 for session in sessions),
+        }
+        metadata["limitations"].extend([
+            "Fixed artifact thresholds screen gross contamination; they do not establish clinical EEG quality",
+            "Reconstructed electrodes are approximations; interpolation cannot restore missing EEG information",
+            "No ICA, EOG regression or manual expert annotation; residual physiological artifacts remain",
+        ])
     (args.out / "sessions.json").write_text(json.dumps(sessions, indent=2) + "\n", encoding="utf-8")
     (args.out / "dataset_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(f"Complete: {len(sessions)} sessions, {len(subject_ids)} subjects in {args.out}")
