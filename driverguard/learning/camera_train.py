@@ -8,6 +8,7 @@ import hashlib
 import json
 from collections import Counter
 from dataclasses import dataclass
+from itertools import combinations
 from pathlib import Path
 
 import numpy as np
@@ -51,16 +52,36 @@ class CameraWindow:
     reason: str | None
 
 
-def load_camera_manifest(manifest_path: str | Path) -> tuple[list[CameraClip], dict]:
+def load_camera_manifest(
+    manifest_path: str | Path, *, splits: tuple[str, ...] | None = None,
+) -> tuple[list[CameraClip], dict]:
     path = Path(manifest_path).resolve()
     manifest = json.loads(path.read_text(encoding="utf-8"))
     validate_input_contract(manifest.get("input_contract"))
     records = manifest.get("clips")
     if not isinstance(records, list) or not records:
         raise ValueError("Camera manifest requires nonempty clips")
+    selected_splits = ("train", "validation", "test") if splits is None else splits
+    if (not selected_splits or len(set(selected_splits)) != len(selected_splits)
+            or not set(selected_splits) <= {"train", "validation", "test"}):
+        raise ValueError("Camera selected splits must be nonempty, unique and recognized")
+    if splits is not None:
+        partitions = {name: set() for name in ("train", "validation", "test")}
+        identifiers = set()
+        for record in records:
+            split, subject, identifier = record.get("split"), record.get("subject"), record.get("clip_id")
+            if split not in partitions or not isinstance(subject, str) or not subject:
+                raise ValueError("Camera partition metadata requires a valid split and subject")
+            if not isinstance(identifier, str) or not identifier or identifier in identifiers:
+                raise ValueError("Camera partition metadata requires unique clip identifiers")
+            identifiers.add(identifier)
+            partitions[split].add(subject)
+        if any(partitions[a] & partitions[b] for a, b in combinations(partitions, 2)):
+            raise ValueError("Camera subjects must be disjoint across train/validation/test")
+        records = [record for record in records if record["split"] in selected_splits]
     clips = []
     seen = set()
-    subjects = {name: set() for name in ("train", "validation", "test")}
+    subjects = {name: set() for name in selected_splits}
     for record in records:
         split = record.get("split")
         if split not in subjects:
@@ -97,10 +118,8 @@ def load_camera_manifest(manifest_path: str | Path) -> tuple[list[CameraClip], d
         clips.append(CameraClip(x, ts_ms, valid, int(label_value), subject, clip_id, split,
                                 str(record.get("illumination", "unknown"))))
     if any(not value for value in subjects.values()):
-        raise ValueError("Camera train, validation and test each require at least one subject")
-    if any(subjects[first] & subjects[second] for first, second in (
-        ("train", "validation"), ("train", "test"), ("validation", "test"),
-    )):
+        raise ValueError("Camera selected splits each require at least one subject")
+    if any(subjects[first] & subjects[second] for first, second in combinations(subjects, 2)):
         raise ValueError("Camera subjects must be disjoint across train/validation/test")
     return clips, manifest
 
@@ -120,17 +139,7 @@ def camera_windows(clips: list[CameraClip], stride: int = 10) -> list[CameraWind
 class _WindowDataset(Dataset):
     def __init__(self, clips: list[CameraClip], windows: list[CameraWindow]):
         self.clips, self.windows = clips, windows
-        counts = Counter(window.clip for window in windows)
-        by_subject: dict[str, dict[int, set[int]]] = {}
-        for window in windows:
-            clip = clips[window.clip]
-            by_subject.setdefault(clip.subject, {}).setdefault(clip.label, set()).add(window.clip)
-        self.weights = []
-        for window in windows:
-            clip = clips[window.clip]
-            classes = by_subject[clip.subject]
-            weight = 1 / (len(by_subject) * len(classes) * len(classes[clip.label]) * counts[window.clip])
-            self.weights.append(weight * len(windows))
+        self.weights = camera_window_weights(clips, windows)
 
     def __len__(self):
         return len(self.windows)
@@ -140,6 +149,21 @@ class _WindowDataset(Dataset):
         clip = self.clips[window.clip]
         return (torch.from_numpy(clip.x[window.end + 1 - CONTEXT:window.end + 1]),
                 float(clip.label), self.weights[index])
+
+
+def camera_window_weights(clips: list[CameraClip], windows: list[CameraWindow]) -> np.ndarray:
+    counts = Counter(window.clip for window in windows)
+    by_subject: dict[str, dict[int, set[int]]] = {}
+    for window in windows:
+        clip = clips[window.clip]
+        by_subject.setdefault(clip.subject, {}).setdefault(clip.label, set()).add(window.clip)
+    weights = []
+    for window in windows:
+        clip = clips[window.clip]
+        classes = by_subject[clip.subject]
+        weight = 1 / (len(by_subject) * len(classes) * len(classes[clip.label]) * counts[window.clip])
+        weights.append(weight * len(windows))
+    return np.asarray(weights, dtype=float)
 
 
 def _scores(model: CameraGRU, clips: list[CameraClip], windows: list[CameraWindow], batch_size: int) -> np.ndarray:

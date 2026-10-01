@@ -4,8 +4,10 @@ Cập nhật: 01/10/2026. Đây là bảng theo dõi công việc hiện tại, 
 đã thống nhất: **camera đạt chất lượng → fine-tune ban đêm → EEG giám sát
 cảnh báo sớm → đóng gói model → Agents → IoT**.
 
-**Việc tiếp theo: A1 — audit dữ liệu camera và lỗi trên tập development.**
-Phiên này hoàn tất kế hoạch; các mục triển khai bên dưới chưa được chạy.
+**Đang thực hiện: A2 — rà nhãn theo thời gian và chuẩn bị dữ liệu camera tốt hơn.**
+Audit kỹ thuật A1 đã xong; phần review nhãn của A1 còn chờ người xác nhận.
+CAM-01 đã chạy trên train/validation nhưng chưa tốt hơn v1; giữ v1 làm mốc.
+Kết quả và artifact ở [báo cáo development](15_camera_development_results.md).
 Chuẩn bị dữ liệu ban đêm/EEG được làm sớm để phát hiện thiếu dữ liệu trước
 khi tới giai đoạn huấn luyện tương ứng.
 
@@ -14,14 +16,14 @@ khi tới giai đoạn huấn luyện tương ứng.
 | Mốc | Đầu ra phải có | Điều kiện hoàn thành | Trạng thái |
 |---|---|---|---|
 | P0. Chốt hiện trạng và lộ trình | Baseline v1, metrics, roadmap này | Có artifact và tiêu chí đo rõ ràng | **XONG** |
-| A. Tối ưu camera ban ngày | Checkpoint `camera_day_v2`, báo cáo theo người, benchmark webcam | Accuracy và macro-F1 ≥85%; hướng tới 90%; đạt kiểm tra tốc độ/chất lượng bên dưới | **TIẾP THEO: A1** |
+| A. Tối ưu camera ban ngày | Checkpoint `camera_day_v2`, báo cáo theo người, benchmark webcam | Accuracy và macro-F1 ≥85%; hướng tới 90%; đạt kiểm tra tốc độ/chất lượng bên dưới | **ĐANG THỰC HIỆN A1 review/A2** |
 | B. Fine-tune thiếu sáng/ban đêm | Checkpoint `camera_day_night_v3`, báo cáo riêng từng miền ánh sáng | Đạt mục tiêu ở các miền được hỗ trợ, giữ chất lượng ban ngày | Chờ A; chuẩn bị dữ liệu từ sớm |
 | C. EEG giám sát cảnh báo sớm | Teacher/nhãn EEG đã kiểm chứng và student camera-only | Chứng minh lợi ích cảnh báo sớm so với camera v3 ở cùng mức báo sai | Chờ B và dữ liệu đồng bộ |
 | D. Đóng gói model cuối | Checkpoint, inference, model card, metrics tái tạo được | Chạy độc lập camera-only, giới hạn sử dụng và bằng chứng được ghi đầy đủ | Chờ C |
 | E. Agents hỗ trợ | Đặc tả Agents dựa trên metadata model | Triển khai sau khi chốt model | Sau D |
 | F. IoT/phần cứng | Tích hợp thiết bị, camera/NIR, benchmark thiết bị thật | Kiểm chứng trên cấu hình phần cứng đích | Sau E |
 
-Các tên checkpoint mới trong tài liệu là **đầu ra dự kiến**, chưa tồn tại.
+Các checkpoint A/B/C/D trong bảng chính là **đầu ra dự kiến**, chưa tồn tại.
 Thử NIR sớm nếu có thiết bị/dữ liệu; bước F là tích hợp sản phẩm phần cứng.
 
 ## 2. Điểm xuất phát đã xác minh
@@ -81,16 +83,25 @@ của người đã có trong train không tạo ra người test độc lập.
   xem lỗi tiêu biểu; ghi nhãn nghi ngờ, blink/ngáp, tư thế, kính và ánh sáng.
   Dùng false positive/false negative trên development để phân tích; không
   mở thêm test để chọn hướng sửa. Đầu ra: báo cáo audit và danh sách ưu tiên.
+  Audit kỹ thuật đã xong: 354 video/588 feature khớp hash, split tách người,
+  không có exposure augmentation ngoài train. Đã xem contact sheets và tạo
+  40 video development để review đầy đủ; chưa có nhãn người xác nhận.
 - [ ] **A2. Cải thiện dữ liệu và protocol.** Chốt định nghĩa “buồn ngủ” thay
   vì mặc định mọi frame của video đều mang cùng trạng thái. Đánh dấu vùng
   không chắc chắn; lập mẫu annotation cần người xác nhận. Ưu tiên video
   liên tục dài hơn và nguồn camera/người đa dạng, giữ nhóm người/phiên khi
   split. Tìm cohort test mới; kiểm tra quyền sử dụng trước đưa vào corpus.
   Đầu ra: manifest version mới, thống kê chất lượng, split cố định.
+  Đã tạo gói `outputs/camera_annotation_a2/` gồm video mã ẩn, CSV interval,
+  mapping/checksum và công cụ validate. [Protocol A2](16_camera_annotation_protocol.md)
+  đã có; 40/40 clip còn unreviewed, chưa xuất manifest nhãn mới/cohort mới.
 - [ ] **A3. Chạy thí nghiệm có đối chứng.** Bắt đầu bằng đặc trưng temporal
   và baseline nhỏ, rồi so GRU/TCN theo bảng bên dưới. So lỗi theo người và
   tính ổn định qua seed, không chỉ lấy lần chạy tốt nhất. Đầu ra: experiment
   log, predictions validation và checkpoint ứng viên.
+  CAM-01 hoàn tất 4 cấu hình logistic, chọn bằng CV theo người trong train.
+  Validation accuracy/macro-F1 61,11%/60,72%, chưa vượt v1 61,94%/61,88%.
+  Không chọn CAM-01 thay v1; CAM-02/03 vẫn chưa chạy.
 - [ ] **A4. Chọn model và ngưỡng.** Chọn bằng validation theo người; khóa
   checkpoint, threshold và preprocessing. Đo điểm xác suất/calibration nếu
   muốn diễn giải score như xác suất. Đầu ra: model card và cấu hình inference.
@@ -104,7 +115,7 @@ của người đã có trong train không tạo ra người test độc lập.
 | ID | Thí nghiệm | Câu hỏi cần trả lời |
 |---|---|---|
 | CAM-00 | V1 đã đóng băng | Mốc chất lượng, tốc độ và lỗi hiện tại là gì? |
-| CAM-01 | Thống kê temporal + logistic/boosting nhỏ | Feature mắt/miệng/đầu có đủ thông tin trước khi tăng độ phức tạp model? |
+| CAM-01 | Thống kê temporal + logistic nhỏ; đã chạy, không thay v1 | Validation macro-F1 60,72%; chưa chứng minh cải thiện; chưa thử boosting |
 | CAM-02 | GRU + temporal features/masks, regularization | Lịch sử và feature cải thiện khả năng tổng quát theo người không? |
 | CAM-03 | TCN nhân quả, cùng dữ liệu/features với GRU | Kiến trúc temporal nào tốt hơn khi giữ protocol giống nhau? |
 | CAM-04 | Encoder nhỏ pretrained cho ROI mắt/miệng + temporal head | Chỉ mở nhánh này nếu audit cho thấy geometry thiếu thông tin và dữ liệu/compute đủ |
@@ -196,16 +207,18 @@ metrics khi thực sự chạy đợt xác nhận đã đóng băng.
 |---|---|---|---|
 | 01/10/2026 | CAM-00 | Xong baseline | [Kết quả v1](12_camera_model_results.md), chưa đạt mục tiêu |
 | 01/10/2026 | P0 | Xong kế hoạch | Roadmap này; triển khai tiếp theo bắt đầu từ A1 |
-| — | A1 | Tiếp theo | Audit train/validation, xác định lỗi và chất lượng nhãn |
-| — | B1/C1 | Chuẩn bị sau A1 | Xác minh nguồn dữ liệu và điều kiện sử dụng trước tải/thu lớn |
+| 01/10/2026 | A1 kỹ thuật | Xong; review nhãn còn mở | [Audit JSON](results/camera_development_a1/audit.json), 40 clip cần review |
+| 01/10/2026 | CAM-01 | Xong đối chứng; không chọn thay v1 | [Kết quả](15_camera_development_results.md), không chạy thêm test |
+| 01/10/2026 | A2 | Đang thực hiện | [Protocol](16_camera_annotation_protocol.md), gói 40 video/CSV đã tạo; chưa reviewed |
+| — | B1/C1 | Chưa triển khai dữ liệu | Các nguồn ứng viên đã có; còn xác minh access/điều khoản/đồng bộ |
 
-### Gói việc của phiên triển khai tiếp theo
+### Gói việc đang theo dõi
 
-1. Chạy audit manifest/feature, tài nguyên CPU/GPU/dung lượng; giữ bản v1.
-2. Phân tích lỗi development và lập danh sách clip cần xác nhận nhãn.
-3. Chốt protocol A2, nguồn mở rộng dữ liệu và kế hoạch cohort test mới.
-4. Khi audit không phát hiện blocker, chạy CAM-01 để có đối chứng đầu tiên.
-5. Cập nhật bảng trên với metric thực, artifact và task kế tiếp.
+1. Đã xong audit manifest/feature/tài nguyên và CAM-01; artifact v1 được giữ.
+2. Đã tạo danh sách ưu tiên lỗi và gói review; tiếp tục gán nhãn/phân xử 40 video.
+3. Chốt protocol A2 cùng người rà nhãn/GVHD, nguồn mở rộng và cohort test mới.
+4. Chạy CAM-02/03 theo kết quả review; so cùng protocol và giới hạn số cấu hình.
+5. Cập nhật metrics/checkpoint/seed; chỉ tick A khi đạt test độc lập và tốc độ.
 
 Tôi phụ trách audit tự động, pipeline, thí nghiệm, metrics và tài liệu.
 Bạn/GVHD tham gia xác nhận định nghĩa nhãn/onset và bố trí dữ liệu/người hoặc

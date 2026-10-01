@@ -1,0 +1,20 @@
+{
+  "run_id": "CAM-01-runtime-smoke",
+  "split": "train",
+  "source_video": "data/raw/camera_uta_pilot/videos/01/0/01_0_0_00.mp4",
+  "features": "data/features/camera_uta_pilot/01_0_01_0_0_00_exp1.npz",
+  "checkpoint_sha256": "3d09bafffba7a96b3384282d354c154fab2d9a65ace3d97a1a99c488d29cb069",
+  "frames": 100,
+  "resolution": [224, 224],
+  "source_fps": 10,
+  "warmup_frames": 49,
+  "frames_with_score": 51,
+  "offline_stride": 1,
+  "max_online_offline_score_difference": 0.0,
+  "processing_p50_ms": 37.72000002209097,
+  "processing_p95_ms": 44.29698504391126,
+  "latency_scope": "perception+model+rules; excludes capture/queues/alert sinks/preview",
+  "webcam_benchmarked": false,
+  "early_warning_trained": false,
+  "test_evaluated": false
+}

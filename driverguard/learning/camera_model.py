@@ -16,6 +16,7 @@ from .camera_features import (
     SAMPLING_POLICY,
 )
 from .camera_features import PHYSICAL_FIELDS as PHYSICAL_FEATURES
+from .camera_statistics import STATISTIC_NAMES, STATISTICS_VERSION, temporal_statistics
 
 CONTEXT = 50
 FEATURE_DIM = 19
@@ -115,7 +116,8 @@ class CameraPredictor:
         self.meta = torch.load(self.path, map_location="cpu", weights_only=True)
         if not isinstance(self.meta, dict) or self.meta.get("format_version") != 1:
             raise ValueError("Unsupported camera checkpoint format")
-        if self.meta.get("architecture") != "camera_gru":
+        self.architecture = self.meta.get("architecture")
+        if self.architecture not in {"camera_gru", "camera_temporal_logistic"}:
             raise ValueError("Unsupported camera model architecture")
         if self.meta.get("context") != CONTEXT or self.meta.get("feature_dim") != FEATURE_DIM:
             raise ValueError("Camera checkpoint must use 50-frame, 19-feature windows")
@@ -126,6 +128,23 @@ class CameraPredictor:
         self.decision_threshold = float(self.meta.get("decision_threshold", float("nan")))
         if not np.isfinite(self.decision_threshold) or not 0 <= self.decision_threshold <= 1:
             raise ValueError("Camera decision threshold must be in [0,1]")
+        if self.architecture == "camera_temporal_logistic":
+            if (self.meta.get("statistics_version") != STATISTICS_VERSION
+                    or tuple(self.meta.get("statistic_names", ())) != STATISTIC_NAMES):
+                raise ValueError("Camera temporal summary schema differs from this implementation")
+            self.statistics_parameters = {}
+            for name in ("center", "scale", "coefficient"):
+                value = self.meta.get(name)
+                if not isinstance(value, torch.Tensor) or value.shape != (len(STATISTIC_NAMES),):
+                    raise ValueError(f"Invalid camera temporal {name}")
+                value = value.to(dtype=torch.float64)
+                if not torch.isfinite(value).all() or (name == "scale" and torch.any(value <= 0)):
+                    raise ValueError(f"Invalid camera temporal {name}")
+                self.statistics_parameters[name] = value
+            self.intercept = float(self.meta.get("intercept", float("nan")))
+            if not np.isfinite(self.intercept):
+                raise ValueError("Invalid camera temporal intercept")
+            return
         hidden_size = self.meta.get("hidden_size")
         dropout = self.meta.get("dropout")
         if not isinstance(hidden_size, int) or isinstance(hidden_size, bool) or not 1 <= hidden_size <= 256:
@@ -144,7 +163,13 @@ class CameraPredictor:
         if result.reason is not None:
             return result
         with torch.inference_mode():
-            score = float(torch.sigmoid(self.model(torch.as_tensor(features, dtype=torch.float32)[None]))[0])
+            if self.architecture == "camera_temporal_logistic":
+                vector = torch.as_tensor(temporal_statistics(features, timestamps, accepted), dtype=torch.float64)
+                params = self.statistics_parameters
+                logit = torch.dot((vector - params["center"]) / params["scale"], params["coefficient"])
+                score = float(torch.sigmoid(logit + self.intercept))
+            else:
+                score = float(torch.sigmoid(self.model(torch.as_tensor(features, dtype=torch.float32)[None]))[0])
         if not np.isfinite(score):
             return CameraPrediction(None, "nonfinite_prediction", result.valid_fraction)
         return CameraPrediction(score, None, result.valid_fraction)

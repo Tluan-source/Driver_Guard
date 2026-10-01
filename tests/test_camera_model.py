@@ -226,6 +226,20 @@ def test_subjects_cannot_cross_camera_splits(tmp_path):
         load_camera_manifest(manifest)
 
 
+def test_development_loader_does_not_open_test_feature_files(tmp_path):
+    manifest = _manifest(tmp_path)
+    (tmp_path / "s4_0.npz").unlink()
+    (tmp_path / "s4_1.npz").unlink()
+    clips, _ = load_camera_manifest(manifest, splits=("train", "validation"))
+    assert len(clips) == 6
+    assert {c.split for c in clips} == {"train", "validation"}
+    values = json.loads(manifest.read_text())
+    values["clips"][-1]["subject"] = "s1"
+    manifest.write_text(json.dumps(values))
+    with pytest.raises(ValueError, match="disjoint"):
+        load_camera_manifest(manifest, splits=("train", "validation"))
+
+
 def test_camera_windows_exclude_future_frames(tmp_path):
     path = tmp_path / "model.pt"
     _checkpoint(path)
