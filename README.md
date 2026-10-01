@@ -28,6 +28,25 @@ camera (RAM) → MediaPipe → FrameSignals → hiệu chỉnh theo tài xế �
 
 ## Bắt đầu nhanh (Windows, Python 3.11)
 
+### Mô hình EEG đã huấn luyện
+
+Pipeline mô hình độc lập nằm trong `driverguard/learning/`: EEG CNT → công suất phổ 30 kênh ×
+5 dải tần → mô hình → score và metrics. Đã train trên 12 người của bộ Driver Fatigue EEG,
+chia theo người 8/2/2. Checkpoint được chọn trên validation là Logistic Regression với
+công suất tương đối; trên test AUROC **0,6464**, balanced accuracy **0,5000**.
+Đây là checkpoint nghiên cứu dùng được để suy luận/đo metrics; ngưỡng hiện tại chưa đủ tin cậy
+để cảnh báo thực tế. Nhánh EEG chưa được hợp nhất với camera hoặc nối vào risk engine.
+
+```powershell
+.venv\Scripts\python.exe -m driverguard.learning.cli predict --checkpoint models/eeg_vigilance_v2/model.pt --features data/features/fatigue_eeg/subject_03_normal.npz --out outputs/eeg_predictions.csv
+```
+
+Checkpoint và dữ liệu đã có trên máy làm việc, được Git ignore. Máy khác cần tải/train lại.
+Xem [hướng dẫn mô hình](docs/05_model_usage.md), [kết quả thực nghiệm](docs/06_model_results.md)
+và [kế hoạch nghiên cứu](docs/04_model_research_plan.md). Agents và IoT chưa triển khai.
+
+### Camera Và Hệ Thống
+
 ```powershell
 py -3.11 -m venv .venv ; .venv\Scripts\activate
 pip install -e ".[api,eval,dev]"
