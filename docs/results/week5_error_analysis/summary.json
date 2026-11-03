@@ -1,0 +1,40 @@
+{
+  "scope": "outer development CV; individual-run tables count each seed separately",
+  "original_test_opened": false,
+  "runs": 30,
+  "subjects": 50,
+  "individual_scheduled_rows": 121050,
+  "ensembles": {
+    "dann": {
+      "scheduled": 20175,
+      "accepted": 19812,
+      "coverage": 0.9820074349442379,
+      "accuracy": 0.7542398546335555,
+      "macro_f1": 0.7537573451730734,
+      "tn": 7910,
+      "fp": 2156,
+      "fn": 2713,
+      "tp": 7033,
+      "drowsy_recall": 0.7216293864149395,
+      "specificity": 0.7858136300417247
+    },
+    "gru": {
+      "scheduled": 20175,
+      "accepted": 19812,
+      "coverage": 0.9820074349442379,
+      "accuracy": 0.7602463153644256,
+      "macro_f1": 0.7596606548502056,
+      "tn": 8020,
+      "fp": 2046,
+      "fn": 2704,
+      "tp": 7042,
+      "drowsy_recall": 0.7225528421916684,
+      "specificity": 0.7967415060600039
+    }
+  },
+  "limitations": [
+    "illumination is source_rgb_unknown; no real day/night attribution",
+    "no temporal human onset labels",
+    "no false-alerts/hour estimate from window classification"
+  ]
+}

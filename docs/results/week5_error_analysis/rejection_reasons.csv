@@ -1,0 +1,7 @@
+mode,reason,count
+dann,current_frame_invalid,489
+dann,insufficient_quality,87
+dann,timestamp_gap,513
+gru,current_frame_invalid,489
+gru,insufficient_quality,87
+gru,timestamp_gap,513

@@ -1,0 +1,21 @@
+{
+  "host": "Windows-10-10.0.26300-SP0",
+  "checkpoint": "models\\from_kaggle\\week5_gru_dann\\fold1_gru_seed42\\inference\\model.pt",
+  "seconds": 150.30966869999975,
+  "frames": 3699,
+  "processed_fps": 24.60919534978661,
+  "processing_ms_p50": 28.97119999943243,
+  "processing_ms_p95": 63.20146000052773,
+  "face_valid_fraction": 0.9726953230602866,
+  "frames_with_model_score": 11,
+  "first_score_s": 149.61746669999957,
+  "timestamp_gaps_over_300ms": 0,
+  "latency_scope": "processing after OpenCV read; sensor exposure and internal driver queue age unknown",
+  "raw_images_saved": false,
+  "accuracy_evaluated": false,
+  "limitations": [
+    "camera frame-drop count unavailable without sensor sequence numbers",
+    "no labeled events: false alerts/hour not established",
+    "physical camera loss and model switching require separate controlled checks"
+  ]
+}
