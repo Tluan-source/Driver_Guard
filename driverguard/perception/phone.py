@@ -3,7 +3,7 @@
 Default backend: MediaPipe Object Detector (EfficientDet-Lite0, COCO, class "cell phone").
 Chosen over Ultralytics YOLO for the MVP because it is Apache-2.0 licensed and runs natively on
 Android with the same model file. A YOLO-nano ONNX backend can be added behind the same
-interface later — remember Ultralytics is AGPL-3.0 (see docs/02_data_plan.md, license gate).
+interface later — remember Ultralytics is AGPL-3.0 (see docs/archive/plans/02_data_plan.md, license gate).
 
 Detection alone never means "phone use": the temporal PhoneTracker requires the phone to be
 near the face (not on the dashboard mount) and to persist for >= phone.min_duration_ms.
@@ -45,7 +45,7 @@ class MediaPipePhoneDetector:
 
         model_path = Path(model_path)
         if not model_path.exists():
-            raise FileNotFoundError(f"{model_path} not found. Run: python scripts/download_models.py")
+            raise FileNotFoundError(f"{model_path} not found. Run: python scripts/data/download_models.py")
         self._mp = mp
         opts = vision.ObjectDetectorOptions(
             base_options=BaseOptions(model_asset_path=str(model_path)),

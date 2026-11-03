@@ -16,6 +16,9 @@ data/*
 !data/README.md
 
 # Runtime outputs
+driverguard-week5-results-*.zip
+driverguard-week5-dev-*.zip
+*.crdownload
 *.db
 *.jsonl
 !tests/golden/*.jsonl

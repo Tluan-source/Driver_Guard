@@ -7,6 +7,7 @@ import { RiskCard } from "./components/RiskCard";
 import { SignalsPanel } from "./components/SignalsPanel";
 import { Timeline } from "./components/Timeline";
 import { TripPanel } from "./components/TripPanel";
+import { ProjectPanel } from "./components/ProjectPanel";
 import { fmt } from "./labels";
 import type { EventRow, Session, Tick } from "./types";
 
@@ -95,7 +96,7 @@ export default function App() {
         </div>
         <div className="hdr-right">
           <span className={`dot ${connected ? "on" : "off"}`} />
-          <span className="small">{connected ? "Đang nhận dữ liệu" : "Mất kết nối"}</span>
+          <span className="small">{connected ? (tick ? "Đang nhận dữ liệu" : "API đã kết nối · chưa có telemetry") : "Mất kết nối"}</span>
           <span className="small mono">{fmt(tick?.processing_fps, 1)} FPS · {fmt(tick?.latency_ms, 0)} ms</span>
           <span className="small">
             {session.username} ({isManager ? "Quản lý đội xe" : `Tài xế ${session.driver_id ?? ""}`})
@@ -104,6 +105,7 @@ export default function App() {
         </div>
       </header>
       <main>
+        {isManager && <ProjectPanel session={session} />}
         <div className="grid-top">
           <RiskCard tick={tick} />
           <SignalsPanel tick={tick} />

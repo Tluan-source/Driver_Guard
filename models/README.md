@@ -3,7 +3,7 @@
 Không commit file model vào git. Tải về bằng:
 
 ```bash
-python scripts/download_models.py
+python -m scripts.data.download_models
 ```
 
 | File | Nguồn | License | Dùng cho |
@@ -14,6 +14,12 @@ python scripts/download_models.py
 Model YOLO (Ultralytics) **không** dùng mặc định vì giấy phép AGPL-3.0 — nếu muốn thử, ghi rõ trong báo cáo và không đưa vào bản thương mại.
 
 ## Checkpoint EEG tự huấn luyện
+
+**Trạng thái khôi phục 03/11/2026:** các checkpoint EEG được mô tả bên dưới chưa có
+trên máy. Hiện có 30 checkpoint GRU/DANN tuần 5 trong `recovered_week5/` (bản gốc)
+và `from_kaggle/week5_gru_dann/` (Model Lab), cùng hai model MediaPipe. Checkpoint
+từng fold chỉ phục vụ đánh giá development, không phải model cuối. Xem
+`docs/reports/week5_recovery_20261103.md`.
 
 `eeg_vigilance_v2/model.pt` là mô hình fatigue được chọn bằng validation trên dữ liệu
 Driver Fatigue EEG (Min et al., 2017; CC BY 4.0). Có trọng số, biến đổi công suất tương đối,

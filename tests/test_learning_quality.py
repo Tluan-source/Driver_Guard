@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from driverguard.learning.eeg import CHANNEL_NAMES, bandpower_window, robust_bandpower_window
+from driverguard.learning.eeg.preprocessing import CHANNEL_NAMES, bandpower_window, robust_bandpower_window
 from driverguard.learning.quality import robust_reference_window
 
 

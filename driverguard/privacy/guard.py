@@ -5,7 +5,7 @@
 (e.g. base64 images) and keys that look like image / landmark / biometric payloads.
 
 This is a code-level guard; the acceptance test is still a packet capture showing 0 image bytes
-off-device (docs/01_architecture.md, "Privacy test").
+off-device (docs/reference/01_architecture.md, "Privacy test").
 """
 from __future__ import annotations
 

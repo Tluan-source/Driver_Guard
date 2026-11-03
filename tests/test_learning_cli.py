@@ -89,7 +89,7 @@ def test_deployment_fit_cannot_be_reported_as_frozen_test(tmp_path):
 
 
 def test_cnt_channel_contract_accepts_checkpoint_list_and_abstains(tmp_path, monkeypatch):
-    from driverguard.learning import eeg
+    from driverguard.learning.eeg import preprocessing as eeg
     from driverguard.learning.quality import ROBUST_PREPROCESSING
 
     channels = list(eeg.CHANNEL_NAMES)

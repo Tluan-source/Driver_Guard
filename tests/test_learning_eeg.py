@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from driverguard.learning.eeg import CHANNEL_NAMES, bandpower_window, extract_cnt, extract_cnt_quality
+from driverguard.learning.eeg.preprocessing import CHANNEL_NAMES, bandpower_window, extract_cnt, extract_cnt_quality
 from scripts.prepare_fatigue_eeg import unique_recordings
 
 

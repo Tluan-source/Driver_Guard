@@ -1,0 +1,29 @@
+{
+  "_comment": "Locked 2026-10-09 before opening UTA full validation. Chosen on a train-only internal split (8 of 36 train subjects); see docs/reports/24_gru_dann_uta_full_20261009.md.",
+  "label_mode": "alert_drowsy",
+  "pooling": "second",
+  "context_seconds": 120,
+  "stride": 25,
+  "batch_size": 128,
+  "epochs": 30,
+  "patience": 8,
+  "hidden_size": 16,
+  "layers": 1,
+  "dropout": 0.5,
+  "learning_rate": 0.0001,
+  "weight_decay": 0.1,
+  "input_noise": 0.5,
+  "domain_weight": 1.0,
+  "max_reversal": 1.0,
+  "domain_lr_multiplier": 10.0,
+  "modes": [
+    "gru",
+    "dann"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "selection_metric": "validation.window.subject_macro.macro_f1"
+}

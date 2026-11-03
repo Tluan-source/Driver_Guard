@@ -71,10 +71,14 @@ class CameraSource:
 class VideoFileSource:
     """Offline video replay. Timestamps come from the file (frame_index / fps) so replay is
     deterministic. `target_fps` subsamples (e.g. 15 fps on a 30 fps video) to emulate the
-    edge device and to speed up batch extraction."""
+    edge device and to speed up batch extraction. `timestamps="pts"` uses the decoder
+    presentation time instead, for variable-frame-rate files where index/fps drifts."""
 
     def __init__(self, path: str | Path, target_fps: float | None = None, realtime: bool = False,
-                 start_ms: int = 0, max_ms: int | None = None):
+                 start_ms: int = 0, max_ms: int | None = None, timestamps: str = "index"):
+        if timestamps not in ("index", "pts"):
+            raise ValueError("timestamps must be index or pts")
+        self.timestamps = timestamps
         self.path = str(path)
         self.cap = cv2.VideoCapture(self.path)
         if not self.cap.isOpened():
@@ -95,13 +99,18 @@ class VideoFileSource:
         step_ms = 1000.0 / self.target_fps if self.target_fps else 0.0
         next_ms = float(self.start_ms)
         i = -1
+        previous = -1
         wall0 = time.monotonic()
         while True:
             ok = self.cap.grab()
             if not ok:
                 break
             i += 1
-            ts = int(round(i * 1000.0 / self.fps))
+            if self.timestamps == "pts":
+                # Strictly increasing even if the container repeats a presentation time.
+                ts = previous = max(round(self.cap.get(cv2.CAP_PROP_POS_MSEC)), previous + 1)
+            else:
+                ts = int(round(i * 1000.0 / self.fps))
             if ts < self.start_ms:
                 continue
             if self.max_ms is not None and ts - self.start_ms > self.max_ms:

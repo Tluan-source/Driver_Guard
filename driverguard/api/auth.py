@@ -1,7 +1,7 @@
 """Minimal auth for the two roles required by the brief: driver and fleet_manager.
 
 Pure standard library (PBKDF2 + HMAC-signed tokens) so it is testable without FastAPI.
-Data-access policy (docs/01_architecture.md):
+Data-access policy (docs/reference/01_architecture.md):
   * driver         — sees only their own live state, events and trips; can give alert feedback.
   * fleet_manager  — sees all drivers' METADATA (never images); can tune HITL thresholds.
 

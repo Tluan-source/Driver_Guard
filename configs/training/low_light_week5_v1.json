@@ -1,0 +1,16 @@
+{
+  "declared_on": "2026-10-19",
+  "source": "uta_rldd_full_v002",
+  "split": "validation",
+  "labels": ["alert", "drowsy"],
+  "recordings": 20,
+  "drivers": 10,
+  "prefix_seconds": 150,
+  "max_edge_pixels": 640,
+  "fps": 10,
+  "conditions": ["original", "exp0.5", "exp0.3", "exp0.2", "exp0.12", "exp0.3_noise", "exp0.12_noise"],
+  "baseline": "original lighting re-extracted at the same resolution and duration",
+  "metrics": ["coverage", "accuracy_on_accepted", "drowsy_detected_of_all_windows"],
+  "limitations": ["prefix sample only", "resized RGB daytime video", "not full-video or real-night evaluation", "validation previously used for development"],
+  "original_test_opened": false
+}

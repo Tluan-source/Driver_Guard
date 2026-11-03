@@ -8,6 +8,7 @@ TickOutput sequence. This lets us
 """
 from __future__ import annotations
 
+import time
 import uuid
 
 from .alerts.explain import explain_vi
@@ -47,6 +48,11 @@ class DriverGuardEngine:
         self.alerts = AlertPolicy(cfg, explain)
         self.degraded_timer = PersistenceTimer(cfg.quality.degraded_after_ms, off_ms=0)
         self.last: TickOutput | None = None
+        # Debug tracing (driverguard.debug / ui/test-console). Off by default: when False the
+        # engine does no extra work. When True, `last_trace` holds the intermediate state of
+        # every layer plus per-layer timings for the latest tick. Never leaves the device.
+        self.trace_enabled = False
+        self.last_trace: dict | None = None
 
     # ------------------------------------------------------------------ HITL
     def reconfigure(self, cfg: DriverGuardConfig) -> None:
@@ -79,6 +85,8 @@ class DriverGuardEngine:
     def step(self, s: FrameSignals) -> TickOutput:
         cfg, ts = self.cfg, s.ts_ms
         q = cfg.quality
+        tr = self.trace_enabled
+        t_cal0 = time.perf_counter() if tr else 0.0
         face_valid = bool(s.camera_ok and s.face_detected and s.face_quality >= q.min_quality)
 
         # neutral pose + relative angles
@@ -89,15 +97,18 @@ class DriverGuardEngine:
         frontal = eyes_valid and (yaw_rel is None or (abs(yaw_rel) < 15 and abs(pitch_rel) < 15))
         ear = _mean(s.ear_left, s.ear_right)
         self.eye_base.update(ts, ear, usable=frontal)
+        t_trk0 = time.perf_counter() if tr else 0.0
 
         eye = self.eye.update(ts, self._openness(s) if eyes_valid else None)
         yawn = self.yawn.update(ts, s.mar if face_valid else None)
         head = self.head.update(ts, yaw_rel, pitch_rel)
         phone = self.phone.update(ts, s.phone_conf, s.phone_near_face, s.camera_ok)
         ctx = self.context.update(ts, s.speed_kmh)
+        t_ev0 = time.perf_counter() if tr else 0.0
 
         ev = assess(cfg, eye, yawn, head, phone, ctx, self.memory.trend_rising)
 
+        t_sm0 = time.perf_counter() if tr else 0.0
         invalid_now = not face_valid
         degraded = self.degraded_timer.update(invalid_now, ts)
         if not s.camera_ok:
@@ -108,6 +119,7 @@ class DriverGuardEngine:
             sreason = Reason.LOW_FACE_QUALITY
         level, reasons = self.sm.update(ts, ev, degraded, sreason, invalid_now)
         alert = self.alerts.update(ts, level, reasons, ev.score)
+        t_mem0 = time.perf_counter() if tr else 0.0
 
         self.memory.update(ts, face_valid, level == RiskLevel.SENSOR_DEGRADED, eye.perclos_proxy,
                            eye.completed_closure_ms, yawn.new_yawn,
@@ -135,4 +147,24 @@ class DriverGuardEngine:
             risk_score=ev.score, risk_level=level, reason_codes=codes, alert=alert,
         )
         self.last = tick
+        if tr:
+            t_end = time.perf_counter()
+            self.last_trace = {
+                "face_valid": face_valid, "eyes_valid": eyes_valid, "frontal": frontal,
+                "ear": ear, "openness": self._openness(s) if eyes_valid else None,
+                "yaw_rel": yaw_rel, "pitch_rel": pitch_rel,
+                "eye_base": self.eye_base, "pose_base": self.pose_base,
+                "eye": eye, "yawn": yawn, "head": head, "phone": phone, "ctx": ctx, "ev": ev,
+                "degraded": degraded, "invalid_now": invalid_now,
+                "level": level, "reasons": list(reasons), "alert": alert,
+                "sm_target_since": {k.value: v for k, v in self.sm._since.items()},
+                "sm_below_since": self.sm._below_since,
+                "timing_ms": {
+                    "calibration": (t_trk0 - t_cal0) * 1000.0,
+                    "temporal": (t_ev0 - t_trk0) * 1000.0,
+                    "evidence": (t_sm0 - t_ev0) * 1000.0,
+                    "state_machine": (t_mem0 - t_sm0) * 1000.0,
+                    "output": (t_end - t_mem0) * 1000.0,
+                },
+            }
         return tick

@@ -32,6 +32,7 @@ from ..config import REPO_ROOT, DriverGuardConfig, apply_updates, get_dotted, tu
 from ..privacy import assert_metadata_only
 from .auth import AuthService, Principal
 from .hub import StateHub
+from .project_status import build_project_overview
 
 
 @dataclass
@@ -41,6 +42,7 @@ class AppContext:
     auth: AuthService
     store: Any = None  # EventStore
     pipeline: Any = None  # DriverGuardPipeline (for live reconfigure + trip summary)
+    project_root: Path | None = None  # Override only in local tests / embedded installations.
 
 
 class LoginIn(BaseModel):
@@ -93,6 +95,10 @@ def create_app(ctx: AppContext) -> FastAPI:
     @app.get("/me")
     def me(p: Principal = Depends(principal)):
         return {"username": p.username, "role": p.role, "driver_id": p.driver_id}
+
+    @app.get("/project/overview")
+    def project_overview(p: Principal = Depends(manager)):
+        return _safe(build_project_overview(ctx.project_root or REPO_ROOT))
 
     @app.get("/state")
     def state(p: Principal = Depends(principal)):
@@ -185,7 +191,9 @@ def create_app(ctx: AppContext) -> FastAPI:
             ctx.store.audit_config(p.username, {"old": old, "new": body.updates})
         return {"ok": True, "tunable": tunable_schema(new_cfg)}
 
-    dist = REPO_ROOT / "dashboard" / "dist"
+    dist = REPO_ROOT / "ui" / "dashboard" / "dist"
+    if not dist.is_dir():
+        dist = REPO_ROOT / "dashboard" / "dist"
     if Path(dist).is_dir():  # serve the built dashboard (npm run build) at /
         app.mount("/", StaticFiles(directory=dist, html=True), name="dashboard")
     return app

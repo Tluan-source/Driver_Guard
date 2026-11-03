@@ -252,6 +252,35 @@ def cmd_replay(args) -> int:
     return 0
 
 
+def cmd_debug_ui(args) -> int:
+    """Model test console backend: browser webcam -> perception -> engine, per-layer trace."""
+    try:
+        import uvicorn
+
+        from .debug.server import UI_DIST, create_debug_app
+    except ImportError:
+        print('Starlette/uvicorn missing. Install:  pip install -e ".[api]"')
+        return 2
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        print("debug-ui chỉ chạy trên loopback (127.0.0.1) vì nhận khung hình webcam.")
+        return 2
+    overrides = {}
+    for kv in args.set:
+        k, v = kv.split("=", 1)
+        try:
+            v = float(v) if "." in v else int(v)
+        except ValueError:
+            pass
+        overrides[k] = v
+    app = create_debug_app(args.config, overrides)
+    ui = f"http://{args.host}:{args.port}" if UI_DIST.is_dir() else \
+        "http://127.0.0.1:5174  (chạy: cd ui/test-console && npm run dev)"
+    print(f"DriverGuard debug server: ws://{args.host}:{args.port}/dbg/ws")
+    print(f"Model Test Console:       {ui}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning", ws_max_size=4 * 1024 * 1024)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # Vietnamese alert text on Windows consoles / redirected output
         try:
@@ -302,6 +331,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--features", required=True)
     p.add_argument("--jsonl", default=None)
     p.set_defaults(func=cmd_replay)
+
+    p = sub.add_parser("debug-ui", help="backend for ui/test-console (webcam + per-layer trace, loopback only)")
+    p.add_argument("--config", default=None, help="YAML config (default configs/default.yaml)")
+    p.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE", help="config overrides")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8010)
+    p.set_defaults(func=cmd_debug_ui)
 
     args = ap.parse_args(argv)
     return int(args.func(args) or 0)

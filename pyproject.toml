@@ -23,8 +23,9 @@ train = ["torch>=2.2", "scipy>=1.11", "scikit-learn>=1.4", "pandas>=2.1", "mne>=
 dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.4"]
 
 [project.scripts]
+driverguard-project = "driverguard.project:main"
 driverguard = "driverguard.cli:main"
-driverguard-model = "driverguard.learning.cli:main"
+driverguard-model = "driverguard.learning.eeg.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["driverguard*"]

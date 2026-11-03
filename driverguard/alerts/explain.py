@@ -3,7 +3,7 @@
 ONE-WAY interface: explanation text is produced FROM the decision and is never fed back into
 it. An optional SLM/LLM explainer may later implement the same signature
 `(level, reasons) -> str`, receiving metadata only — never frames — and its output must not
-change risk_level, thresholds or alerts (architecture rule, see docs/01_architecture.md).
+change risk_level, thresholds or alerts (architecture rule, see docs/reference/01_architecture.md).
 """
 from __future__ import annotations
 

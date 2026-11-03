@@ -1,0 +1,29 @@
+{
+  "_comment": "Final 2026-10-09 configuration after validation development iterations v1-v3 (docs/reports/24_gru_dann_uta_full_20261009.md). Validation has been used for model development; only the locked test or a new cohort can confirm it.",
+  "label_mode": "alert_drowsy",
+  "pooling": "window",
+  "context_seconds": 120,
+  "stride": 25,
+  "batch_size": 128,
+  "epochs": 10,
+  "patience": 4,
+  "hidden_size": 8,
+  "layers": 1,
+  "dropout": 0.5,
+  "learning_rate": 0.001,
+  "weight_decay": 0.01,
+  "input_noise": 0.0,
+  "domain_weight": 1.0,
+  "max_reversal": 1.0,
+  "domain_lr_multiplier": 10.0,
+  "modes": [
+    "gru",
+    "dann"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "selection_metric": "validation.window.subject_macro.macro_f1"
+}

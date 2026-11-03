@@ -1,0 +1,20 @@
+{
+  "mode": "dann",
+  "label_mode": "binary_pilot",
+  "epochs": 60,
+  "patience": 12,
+  "batch_size": 256,
+  "stride": 10,
+  "context_seconds": 5,
+  "hidden_size": 96,
+  "layers": 2,
+  "dropout": 0.3,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "domain_weight": 0.2,
+  "max_reversal": 1.0,
+  "seed": 42,
+  "device": "cuda",
+  "require_gpus": 2,
+  "num_workers": 0
+}

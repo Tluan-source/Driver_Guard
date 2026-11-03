@@ -1,4 +1,4 @@
-"""Per-driver calibration — the core of AI contribution "Hướng 1" (see docs/00_scope_mapping.md).
+"""Per-driver calibration — the core of AI contribution "Hướng 1" (see docs/reference/00_scope_mapping.md).
 
 Problem: a fixed EAR threshold (~0.20–0.25, tuned on mostly Western datasets) produces
 systematic false "eye closed" on drivers whose open-eye EAR is naturally low (monolid /

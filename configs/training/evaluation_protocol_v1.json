@@ -1,0 +1,49 @@
+{
+  "version": "week5_20261019_v1",
+  "locked_on": "2026-10-19",
+  "metric_confirmed_by_user": true,
+  "purpose": "development evaluation; independent acceptance remains pending",
+  "task": "alert_drowsy",
+  "class_names": ["alert", "drowsy"],
+  "primary": {
+    "metric": "window_accuracy",
+    "context_seconds": 120,
+    "stride_frames": 25,
+    "fps": 10,
+    "aggregation": "correct accepted windows / all accepted windows",
+    "strictly_greater_than": 0.85,
+    "coverage_reported_separately": true,
+    "rejected_windows_are_not_normal": true
+  },
+  "secondary": ["window_macro_f1", "subject_macro_f1", "auroc", "coverage", "causal_300s_accuracy"],
+  "training_config": "configs/training/camera_gru_dann_uta_full_v002_window.json",
+  "decision_rule": "argmax; no threshold tuning",
+  "epoch_selection": "inner_validation.window.subject_macro.macro_f1",
+  "modes": ["gru", "dann"],
+  "seeds": [42, 43, 44],
+  "candidate_rule": "Report every seed. Compare fixed equal-probability three-seed ensembles on matched outer-fold endpoints. Prefer GRU unless the paired driver-bootstrap 95% CI for DANN minus GRU accuracy is strictly positive.",
+  "cross_validation": {
+    "outer_folds": 5,
+    "split_seed": 20261019,
+    "population": "original train and validation subjects only",
+    "inner_validation_subjects": 8,
+    "epoch_selection_scope": "one fixed inner subject holdout in each outer fold",
+    "original_test_excluded": true,
+    "architecture_previously_developed_on_this_population": true,
+    "independent_acceptance": false
+  },
+  "adaptation": "none; normalization and domain head use inner train subjects only",
+  "execution": {"full_training": "Kaggle GPU T4 x2", "local": ["tests", "audit", "inference", "short_smoke"]},
+  "test_policy": {
+    "original_uta_test_open_allowed": false,
+    "frozen_before_new_training": true,
+    "independent_test": false,
+    "reason": "Full UTA overlaps historical pilot subjects; a new independent cohort and locked candidate are required for final acceptance."
+  },
+  "low_light": {
+    "split": "validation only",
+    "conditions": ["exp0.5", "exp0.3", "exp0.2", "exp0.12", "exp0.3_noise", "exp0.12_noise"],
+    "report_scope_and_coverage": true,
+    "real_night_test": false
+  }
+}

@@ -1,0 +1,222 @@
+{
+  "updated": "2026-11-03",
+  "current_stage": "04",
+  "stages": [
+    {
+      "id": "01",
+      "title": "Môi trường và cấu trúc",
+      "state": "done",
+      "next": "Đã khôi phục source tuần 5, Python 3.10, dependencies, dashboard và Model Lab; xem docs/reports/week5_recovery_20261103.md."
+    },
+    {
+      "id": "02",
+      "title": "Dữ liệu và nhãn",
+      "state": "in_progress",
+      "next": "Hiện có 151 NPZ/50 người development khớp hash. Thiếu raw UTA, low-light, DROZY và bản review A2; cần khôi phục/audit trước khi tiếp tục."
+    },
+    {
+      "id": "03",
+      "title": "Feature camera",
+      "state": "partially_restored",
+      "next": "Khôi phục feature development gốc; replay 30 checkpoint đã khớp Kaggle. Chưa có 31 clip test gốc hoặc 140 NPZ low-light."
+    },
+    {
+      "id": "04",
+      "title": "GRU và GRU+DANN",
+      "state": "in_progress",
+      "next": "30 run subject-CV Kaggle đã khôi phục: ensemble GRU 76,0246%, DANN 75,4240%, coverage 98,2007%. Chưa >85%; CV không phải test độc lập. Thiếu 44 model đối chứng cũ."
+    },
+    {
+      "id": "05",
+      "title": "EEG supervision",
+      "state": "planned",
+      "next": "Chưa có dữ liệu DROZY trên máy mới. Khôi phục/audit phiên, xác minh CamSync/interpIndices rồi mới làm teacher EEG và ablation; không ghép EEG khác người/phiên với UTA."
+    },
+    {
+      "id": "06",
+      "title": "Đánh giá và inference",
+      "state": "prototype",
+      "next": "Đã kiểm replay CPU 30 model, full-clip API và runtime warmup/reset/mất mặt. Còn cohort độc lập, video liên tục, false alerts/giờ và benchmark webcam ngày/đêm."
+    },
+    {
+      "id": "07",
+      "title": "Ứng dụng và Edge/IoT",
+      "state": "in_progress",
+      "next": "Dashboard và Model Lab local đã khôi phục; tách rõ CV với ứng viên cuối. Edge/IoT và model nghiệm thu vẫn cần dữ liệu/hạ tầng kiểm chứng."
+    }
+  ],
+  "tasks": {
+    "week5-audit": {
+      "description": "Kiểm hash, split, checkpoint và CSV của 30 run tuần 5",
+      "args": ["-m", "scripts.audit_week5_recovery"]
+    },
+    "week5-replay": {
+      "description": "Replay CPU lấy mẫu cả 30 checkpoint trên NPZ gốc",
+      "args": ["-m", "scripts.replay_week5_recovery"]
+    },
+    "week5-runtime": {
+      "description": "Kiểm API replay, warmup 120 giây, mất mặt và reset",
+      "args": ["-m", "scripts.check_week5_runtime"]
+    },
+    "week5-summary": {
+      "description": "Tái tính ensemble và paired CI; giữ nguyên artifact gốc",
+      "args": ["-m", "scripts.evaluation.summarize_subject_cv", "--root", "models/recovered_week5", "--protocol", "configs/training/evaluation_protocol_v1.json", "--out", "outputs/recovery_week5/cv_comparison_recomputed.json"]
+    },
+    "test-light": {
+      "description": "Regression test protocol và runtime tuần 5; cần dependencies",
+      "args": [
+        "-m",
+        "pytest",
+        "tests/test_week5_runtime.py",
+        "-q"
+      ]
+    },
+    "test": {
+      "description": "Toàn bộ pytest, cần dependency dự án",
+      "args": [
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    "camera-smoke": {
+      "description": "CAM-02 CPU, một cue/seed, hai epoch; cần NPZ pilot",
+      "args": [
+        "-m",
+        "driverguard.learning.camera.multicue_train",
+        "--manifest",
+        "data/features/camera_uta_pilot/manifest.json",
+        "--out",
+        "outputs/smoke/camera",
+        "--cue-sets",
+        "full",
+        "--seeds",
+        "42",
+        "--epochs",
+        "2",
+        "--batch-size",
+        "16",
+        "--device",
+        "cpu"
+      ]
+    },
+    "camera-live": {
+      "description": "Checkpoint GRU CV 120 giây để kiểm thử webcam local, chưa phải model cuối",
+      "args": [
+        "-m",
+        "driverguard.learning.camera.cli",
+        "run",
+        "--checkpoint",
+        "models/from_kaggle/week5_gru_dann/fold1_gru_seed42/inference/model.pt",
+        "--source",
+        "0",
+        "--show"
+      ]
+    },
+    "review-labels": {
+      "description": "Validate biểu mẫu 40 clip A2; không tự gán nhãn",
+      "args": [
+        "-m",
+        "scripts.data.prepare_camera_annotation",
+        "validate",
+        "--raw",
+        "data/raw/camera_uta_pilot/manifest.json",
+        "--package",
+        "outputs/camera_annotation_a2/private_manifest.json",
+        "--annotations",
+        "outputs/camera_annotation_a2/annotations.csv"
+      ]
+    },
+    "notebooks": {
+      "description": "Sinh các notebook hiện hành từ script Python",
+      "args": [
+        "-m",
+        "scripts.dev.py_to_ipynb",
+        "kaggle/00_dataset_intake.py",
+        "kaggle/02_train_camera_multicue.py",
+        "kaggle/03_train_gru_dann.py",
+        "kaggle/04_week5_subject_cv.py"
+      ]
+    },
+    "bundle-source": {
+      "description": "Xuất code sang Kaggle; thêm --out <ZIP mới>",
+      "args": [
+        "-m",
+        "driverguard.execution",
+        "bundle-source"
+      ]
+    },
+    "bundle-camera": {
+      "description": "Xuất NPZ train/validation; thêm --out <ZIP mới>",
+      "args": [
+        "-m",
+        "driverguard.execution",
+        "bundle-camera",
+        "--manifest",
+        "data/features/week5_development/manifest.json"
+      ]
+    },
+    "simulate": {
+      "description": "Mô phỏng engine luật, không cần webcam",
+      "args": [
+        "-m",
+        "driverguard",
+        "simulate",
+        "--scenario",
+        "drowsy"
+      ]
+    },
+    "debug-ui": {
+      "description": "Backend test console tại 127.0.0.1:8010",
+      "args": [
+        "-m",
+        "driverguard",
+        "debug-ui"
+      ]
+    },
+    "dann-smoke": {
+      "description": "GRU+DANN CPU smoke hai epoch, feature pilot binary; không phải nghiệm thu",
+      "args": [
+        "-m",
+        "driverguard.learning.camera.dann.train",
+        "--manifest",
+        "data/features/camera_uta_pilot/manifest.json",
+        "--out-dir",
+        "outputs/smoke/gru_dann_next",
+        "--epochs",
+        "2",
+        "--device",
+        "cpu",
+        "--batch-size",
+        "64",
+        "--label-mode",
+        "binary_pilot"
+      ]
+    },
+    "project-dashboard": {
+      "description": "Dashboard quản lý project, không mở camera hoặc sinh telemetry giả",
+      "args": [
+        "-m",
+        "driverguard.api.project_server",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ]
+    },
+    "audit-project": {
+      "description": "Kiểm định artifact CV tuần 5 hiện có; dữ liệu thiếu ghi trong báo cáo khôi phục",
+      "args": [
+        "-m",
+        "scripts.audit_week5_recovery"
+      ]
+    },
+    "uta-intake": {
+      "description": "Sinh manifest/split UTA full metadata; chưa xác nhận decode/PTS",
+      "args": [
+        "-m",
+        "scripts.data.prepare_uta_full"
+      ]
+    }
+  }
+}

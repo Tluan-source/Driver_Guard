@@ -5,7 +5,7 @@ landmarks, which is what offline evaluation needs. For live camera we also use V
 and simply read the newest frame each loop (frames that arrive while we are busy are
 dropped by the camera buffer) — temporal logic is timestamp-based so drops are safe.
 
-Model file: models/face_landmarker.task  (download: `python scripts/download_models.py`)
+Model file: models/face_landmarker.task  (download: `python scripts/data/download_models.py`)
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ class MediaPipeFaceLandmarker:
         model_path = Path(model_path)
         if not model_path.exists():
             raise FileNotFoundError(
-                f"{model_path} not found. Run: python scripts/download_models.py"
+                f"{model_path} not found. Run: python scripts/data/download_models.py"
             )
         self._mp = mp
         opts = vision.FaceLandmarkerOptions(

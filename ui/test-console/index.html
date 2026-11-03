@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DriverGuard · Model Lab</title>
+  <link rel="stylesheet" href="/console.css">
+  <script type="module" src="/console.js"></script>
+</head>
+<body>
+  <header><div><p class="eyebrow">DRIVERGUARD / LOCAL TOOLS</p><h1>Model Lab</h1></div>
+    <span class="tag">Tuần 5 · cửa sổ 120 giây</span></header>
+  <main>
+    <p class="notice">Các checkpoint CV phục vụ kiểm tra và so sánh development. Mục tiêu accuracy &gt;85% chưa được xác nhận. Test gốc được khóa.</p>
+    <div id="status" role="status" aria-live="polite">Đang đọc checkpoint và feature…</div>
+    <section class="card selectors">
+      <label>Checkpoint <select id="model" aria-label="Checkpoint"></select></label>
+      <label>Bộ feature <select id="feature" aria-label="Bộ feature"></select></label>
+      <label>Clip development <select id="clip" aria-label="Clip development"></select></label>
+      <p id="model-meta" class="muted"></p>
+    </section>
+    <div class="columns">
+      <section class="card">
+        <div class="heading"><h2>Replay từ feature thật</h2><button id="replay" disabled>Chạy replay</button></div>
+        <p class="muted">Argmax trên các cửa sổ quá khứ, bước 2,5 giây. Số liệu một clip dùng để kiểm tra inference.</p>
+        <div class="metrics" id="replay-metrics"><span>Chọn clip để bắt đầu</span></div>
+        <svg id="chart" viewBox="0 0 640 220" role="img" aria-label="Xác suất drowsy theo thời gian"></svg>
+        <p class="muted" id="consistency">Đường xanh: p(drowsy). Điểm xám: cửa sổ bị loại do chất lượng.</p>
+        <details><summary>Chi tiết replay</summary><pre id="replay-detail">Chưa chạy</pre></details>
+      </section>
+      <section class="card">
+        <h2>Runtime trực tiếp</h2>
+        <p class="muted">Mô phỏng kiểm tra luồng xử lý; không phải độ chính xác thực tế. Webcam chỉ hoạt động khi bạn bấm mở.</p>
+        <div class="selectors compact">
+          <label>Kịch bản <select id="scenario"><option value="drowsy">Buồn ngủ</option><option value="normal">Bình thường</option><option value="degraded">Mất mặt / chất lượng thấp</option><option value="distracted">Mất tập trung</option></select></label>
+          <label>Tốc độ mô phỏng <select id="speed"><option value="16">16×</option><option value="4">4×</option><option value="1">1×</option></select></label>
+        </div>
+        <div class="actions"><button id="synthetic" disabled>Chạy mô phỏng</button><button id="webcam" class="secondary" disabled>Mở webcam</button></div>
+        <div class="actions"><button id="pause" class="secondary" disabled>Tạm dừng</button><button id="reset" class="secondary" disabled>Xóa lịch sử</button><button id="stop" class="secondary" disabled>Dừng</button></div>
+        <video id="preview" muted playsinline hidden></video><canvas id="capture" hidden></canvas>
+        <div class="live" aria-live="polite"><p id="live-source" class="eyebrow">CHƯA CHẠY</p><strong id="live-label">Chờ tín hiệu</strong><p id="live-progress">Cần đủ 120 giây ngữ cảnh liên tục.</p></div>
+        <details><summary>Tín hiệu và trạng thái</summary><pre id="live-detail">Chưa chạy</pre></details>
+      </section>
+    </div>
+    <footer>Metadata và inference cục bộ · Ảnh webcam được xử lý trong RAM, không lưu video.</footer>
+  </main>
+</body>
+</html>
