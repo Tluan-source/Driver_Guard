@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "camera_read_failure_after_release": true,
+  "score_suppressed_on_camera_loss": true,
+  "model_switch_checks": [
+    {
+      "mode": "gru",
+      "new_model_requires_warmup": true,
+      "new_runtime_history_empty": true
+    },
+    {
+      "mode": "dann",
+      "new_model_requires_warmup": true,
+      "new_runtime_history_empty": true
+    }
+  ],
+  "scope": "real webcam frame and software-released camera; physical USB unplug not tested",
+  "raw_images_saved": false
+}

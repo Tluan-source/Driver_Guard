@@ -16,17 +16,25 @@ macro-F1 và coverage báo riêng. Mục tiêu này chưa đạt.
 
 ## Ưu tiên 1 — có thể bắt đầu ngay
 
-- [ ] **Chốt bản phục hồi vào Git và sao lưu ngoài máy.** Rà diff, commit/push code,
+- [x] **Chốt bản phục hồi vào Git và sao lưu ngoài máy.** Rà diff, commit/push code,
   docs và test; sao lưu hai ZIP model/feature ở nơi lưu trữ riêng cùng checksum.
   Đầu ra: mốc Git có thể checkout và bản sao artifact có thể tải lại.
-- [ ] **Phân tích lỗi từ 30 run CV đã có.** Thống kê theo người, fold, seed, lớp,
+- [x] **Phân tích lỗi từ 30 run CV đã có.** Thống kê theo người, fold, seed, lớp,
   chất lượng và lý do từ chối; confusion matrix, recall/specificity, macro-F1 và
   coverage. Ghép đúng clip/timestamp khi so GRU với DANN. Đầu ra: CSV và báo cáo
   các nhóm lỗi cần ưu tiên; không dùng test gốc để lựa chọn cải tiến.
-- [ ] **Benchmark webcam thật trên máy đích.** Đo FPS, P50/P95 độ trễ, frame drops,
+- [x] **Benchmark webcam thật trên máy đích.** Đo FPS, P50/P95 độ trễ, frame drops,
   warmup, mất mặt/camera, đổi model, reset và cảnh báo trên phiên liên tục. Đầu ra:
   log cấu hình thiết bị/camera và kết quả đo. Mục tiêu thiết kế trong docs là
   ≥15 FPS và P95 capture-to-result ≤100 ms; chưa có phép đo xác nhận.
+
+Kết quả ba mục: [báo cáo 03/11/2026](reports/first_three_checkpoints_20261103.md).
+Webcam đạt 24,61 FPS; processing P95 63,20 ms. Đã kiểm camera release, reset và
+đổi GRU/DANN. Sensor frame drops/tuổi frame chưa đo được bằng API đang dùng;
+mốc capture-to-result vẫn chưa xác nhận và chưa có nhãn để tính báo sai/giờ.
+
+- [ ] **Theo dõi tiếp benchmark:** phân tích score đầu ở 149,62 giây, bổ sung đo
+  tuổi frame/capture-to-result và phiên có ground truth để tính báo sai/giờ.
 
 ## Ưu tiên 2 — bổ sung bằng chứng còn thiếu của tuần 5
 

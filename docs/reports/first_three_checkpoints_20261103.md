@@ -3,9 +3,11 @@
 ## Git và bản sao
 
 Đã commit source khôi phục tại `7f9d7b4` trên nhánh `recovery/week7`.
-Push cần xác thực GitHub trên máy. Thư mục sao lưu Google Drive:
+Đã push source và báo cáo lên `origin/recovery/week7`. Thư mục sao lưu Google Drive:
 https://drive.google.com/drive/u/0/folders/14SteOCoccWKFaY7lUN7HyanQ1dEuWcwB
-Trạng thái upload đang được kiểm chứng; chưa coi tạo thư mục là sao lưu hoàn tất.
+Đã thấy Drive xác nhận “Đã tải 2 mục lên” và hai ZIP có dấu hoàn tất.
+Checksum gốc lưu ở `docs/results/week5_backup_sha256.txt` trong Git;
+file checksum chưa tải riêng lên Drive do giao diện upload phản hồi lỗi mạng.
 
 ## Phân tích lỗi 30 run CV
 
@@ -48,5 +50,9 @@ và tuổi frame trong driver. Vì vậy chưa xác nhận mục tiêu capture-t
 P95 ≤100 ms. FPS đo đạt mốc thiết kế ≥15 FPS trong phiên này.
 Score đầu muộn hơn ngữ cảnh danh nghĩa 120 giây cần phân tích tiếp chuỗi bin
 10 Hz và reset của buffer; không coi warmup thực tế đã đạt 120 giây.
-Chưa đo frame drops ở sensor, mất camera vật lý, chuyển model hoặc báo sai/giờ
-có ground truth; các kiểm tra reset/mất mặt mô phỏng trước đó là bằng chứng riêng.
+Kiểm bổ sung bằng `scripts.evaluation.check_week5_webcam_controls`: webcam đọc
+được frame thật; sau release không đọc được frame và score bị chặn; reset runtime
+và chuyển GRU/DANN đều có lịch sử rỗng và yêu cầu warmup. Kết quả ở
+`outputs/week5_webcam_benchmark/controls.json`.
+Chưa đo frame drops ở sensor, rút USB vật lý hoặc báo sai/giờ có ground truth;
+các kiểm tra mất mặt mô phỏng trước đó là bằng chứng riêng.
