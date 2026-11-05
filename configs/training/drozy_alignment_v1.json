@@ -1,0 +1,16 @@
+{
+  "version": "drozy_2018_alignment_20261105_v1",
+  "source": "downloaded official release README.md, EDF Cam-Sync, timestamps and interpIndices",
+  "sync_threshold_volts": 0.0,
+  "max_frame_to_sync_error_s": 0.015,
+  "require_unique_edge_per_accepted_frame": true,
+  "minimum_session_frame_coverage": 0.98,
+  "minimum_session_grid_coverage": 0.95,
+  "max_interpolation_span_s": 0.15,
+  "max_grid_origin_candidate_error_s": 0.1,
+  "grid_origin": "unresolved between row/30 and (row+1)/30; accept only rows consistent with both",
+  "psg_mapping_clock": "actual Cam-Sync sample clock, not encoded-video PTS",
+  "unmatched_frames": "reject; never fill, extrapolate or shift later frames by ordinal position",
+  "physiological_labels_available": false,
+  "teacher_training_allowed": false
+}

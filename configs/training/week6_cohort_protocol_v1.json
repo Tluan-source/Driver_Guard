@@ -1,0 +1,57 @@
+{
+  "version": "week6_cohort_20261103_v1",
+  "source_sheet_row": 38,
+  "status": "protocol_prepared; recruitment, human labels and collection pending",
+  "device": {
+    "platform": "Windows 10.0.26300",
+    "processor": "13th Gen Intel Core i5-13500H",
+    "camera": "USB2.0 HD UVC WebCam",
+    "requested_resolution": [640, 480],
+    "verified_negotiated_resolution": [640, 480],
+    "requested_capture_fps": 30,
+    "learned_feature_hz": 10,
+    "compute": "CPU; torch threads 4",
+    "observed_fps_week5": 24.60919534978661,
+    "observed_processing_p95_ms_week5": 63.20146000052773,
+    "end_to_end_latency_confirmed": false
+  },
+  "design": {
+    "planning_target_participants": 20,
+    "planning_development_participants": 12,
+    "planning_locked_test_participants": 8,
+    "planning_status": "proposed pilot design; recruitment and supervisor review pending",
+    "split_unit": "participant",
+    "split_seed": 20261103,
+    "sessions_per_participant": 2,
+    "conditions": ["day_RGB", "night_RGB"],
+    "minimum_continuous_session_seconds": 600,
+    "UTA_participants_allowed_in_independent_cohort": false,
+    "test_view_policy": "only after candidate, labels, alert policy and protocol freeze",
+    "collection": "stationary vehicle or supervised simulator; event labels retain simulated/observed provenance",
+    "raw_video_storage": "local controlled storage with consent; never production API telemetry"
+  },
+  "annotation": {
+    "states": ["alert", "drowsy_visible", "uncertain"],
+    "interval_seconds": true,
+    "independent_reviewers": 2,
+    "adjudication_required": true,
+    "uncertain_intervals": "exclude from labeled accuracy and report separately",
+    "physiological_onset_claim": false
+  },
+  "evaluation": {
+    "task": "alert_drowsy",
+    "context_seconds": 120,
+    "stride_seconds": 2.5,
+    "decision_rule": "argmax",
+    "primary": "accepted-window accuracy strictly greater than 0.85",
+    "secondary": ["macro_f1", "subject_macro_f1", "class_recall", "specificity", "subject_bootstrap_ci95", "coverage", "event_recall", "false_alerts_per_hour"],
+    "report_by_condition": true,
+    "coverage_denominator": "all scheduled windows after warmup; rejected windows reported separately",
+    "false_alert_rate_acceptance_cap_per_hour": null,
+    "false_alert_policy": "choose cap and warning policy using development pilot before opening test",
+    "smoothing_and_alert_policy_frozen_before_test": true,
+    "runtime_targets": {"processed_fps_at_least": 15, "capture_to_result_p95_ms_at_most": 100},
+    "real_night_support_confirmed": false,
+    "independent_acceptance_confirmed": false
+  }
+}

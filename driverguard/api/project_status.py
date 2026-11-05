@@ -89,7 +89,7 @@ def _run(path: Path, root: Path) -> dict[str, Any] | None:
     history = _history(data.get("history")) or _read_history(path.parent / "history.json")
     run_dir = path.parent.parent if path.parent.name == "metrics" else path.parent
     smoke = "smoke" in run_dir.name.lower() or protocol.get("purpose") == "smoke"
-    provenance = _json(run_dir / "week5_provenance.json")
+    provenance = _json(run_dir / "cv_provenance.json") or _json(run_dir / "week5_provenance.json")
     fold = provenance.get("outer_fold")
     fold_name = re.match(r"fold([1-5])_(?:gru|dann)_seed\d+$", run_dir.name)
     cross_validation = isinstance(fold, int) or fold_name is not None

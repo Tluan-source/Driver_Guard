@@ -145,7 +145,8 @@ def _describe(path: Path) -> dict[str, Any] | None:
     parts = rel.split("/")
     group = parts[2] if parts[0] == "runs" else parts[2] if parts[1] == "from_kaggle" else parts[1]
     run_dir = path.parent.parent if path.parent.name == "inference" else path.parent
-    fold = _read_json(run_dir / "week5_provenance.json").get("outer_fold")
+    provenance = _read_json(run_dir / "cv_provenance.json") or _read_json(run_dir / "week5_provenance.json")
+    fold = provenance.get("outer_fold")
     return {
         "id": rel, "family": family, "architecture": arch, "mode": mode, "group": group,
         "name": parts[-3] if parts[-2] == "inference" else parts[-2],

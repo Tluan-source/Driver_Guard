@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Protocol
+from typing import Protocol
 
 import cv2
 import numpy as np
@@ -40,10 +41,16 @@ class CameraSource:
         self.cap.set(cv2.CAP_PROP_FPS, fps)
         self.max_failures = max_failures
         self._t0 = time.monotonic()
+        self._last_timestamp_ms = -1
+        self.timestamp_adjustments = 0
         self._stopped = False
 
     def _now_ms(self) -> int:
-        return int((time.monotonic() - self._t0) * 1000)
+        measured = int((time.monotonic() - self._t0) * 1000)
+        timestamp = max(measured, self._last_timestamp_ms + 1)
+        self.timestamp_adjustments += timestamp != measured
+        self._last_timestamp_ms = timestamp
+        return timestamp
 
     def frames(self) -> Iterator[Frame]:
         i = 0
@@ -110,7 +117,7 @@ class VideoFileSource:
                 # Strictly increasing even if the container repeats a presentation time.
                 ts = previous = max(round(self.cap.get(cv2.CAP_PROP_POS_MSEC)), previous + 1)
             else:
-                ts = int(round(i * 1000.0 / self.fps))
+                ts = round(i * 1000.0 / self.fps)
             if ts < self.start_ms:
                 continue
             if self.max_ms is not None and ts - self.start_ms > self.max_ms:

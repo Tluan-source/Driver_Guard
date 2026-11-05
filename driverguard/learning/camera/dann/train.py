@@ -169,6 +169,11 @@ def evaluate(model, corpus: Corpus, windows, split, mapping, config, device):
             "clip": row_metrics(clips, len(LABEL_MODES[config.label_mode]))}, rows, clips
 
 
+def accuracy_target_met(metrics):
+    accuracy = metrics["window"]["accuracy"]
+    return accuracy is not None and accuracy > 0.85
+
+
 def train_experiment(manifest_path: str | Path, out_dir: str | Path, config: TrainConfig,
                      resume: str | Path | None = None, evaluate_test: bool = False,
                      stop_after_epoch: int | None = None) -> dict:
@@ -364,9 +369,6 @@ def train_experiment(manifest_path: str | Path, out_dir: str | Path, config: Tra
               "quality": protocol["windowing"], "best_epoch": best_epoch,
               "manifest_sha256": corpus.manifest_sha256}
     save_checkpoint(output / "inference" / "model.pt", export)
-    def target_met(metrics):
-        return any(value is not None and value > 0.85 for value in
-                   (metrics["window"]["accuracy"], metrics["window"]["macro_f1"]))
     summary = {
         "schema_version": 1, "status": "interrupted" if interrupted else "completed",
         "architecture": architecture, "label_mode": config.label_mode,
@@ -374,7 +376,8 @@ def train_experiment(manifest_path: str | Path, out_dir: str | Path, config: Tra
         "selection_metric": protocol["selection_metric"], "best_validation_macro_f1": best_score,
         "metrics": {"validation": validation, "test": test}, "hardware": hardware,
         "target": {"threshold": 0.85, "operator": "strictly_greater", "metric_unit": "causal_window",
-                   "validation_met": target_met(validation), "test_met": target_met(test) if test else None,
+                   "metric": "window_accuracy",
+                   "validation_met": accuracy_target_met(validation), "test_met": accuracy_target_met(test) if test else None,
                    "independently_confirmed": False,
                    "confirmation_note": "Requires a previously unseen independent cohort and coverage/runtime checks"},
         "checkpoint_sha256": sha256_file(output / "inference" / "model.pt"),

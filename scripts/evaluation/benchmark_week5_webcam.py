@@ -5,6 +5,7 @@ import platform
 import time
 from pathlib import Path
 
+import cv2
 import numpy as np
 import torch
 
@@ -18,9 +19,10 @@ from driverguard.perception.face import MediaPipeFaceLandmarker
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=150)
+    ap.add_argument("--out", type=Path, default=Path("outputs/week5_webcam_benchmark"))
     args = ap.parse_args()
     torch.set_num_threads(4)
-    out = Path("outputs/week5_webcam_benchmark")
+    out = args.out
     out.mkdir(parents=True, exist_ok=True)
     checkpoint = Path("models/from_kaggle/week5_gru_dann/fold1_gru_seed42/inference/model.pt")
     predictor = load_runtime_predictor(checkpoint)
@@ -29,11 +31,17 @@ def main():
     fast = PerceptionExtractor(cfg, MediaPipeFaceLandmarker(resolve_path(cfg.models.face_landmarker)))
     head = PerceptionExtractor(cfg, MediaPipeFaceLandmarker(resolve_path(cfg.models.face_landmarker)))
     source = CameraSource()
-    rows, process_ms = [], []
+    rows, process_ms, read_to_result_ms = [], [], []
+    camera_info = {"width": source.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+                   "height": source.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                   "driver_reported_fps": source.cap.get(cv2.CAP_PROP_FPS)}
     start = time.perf_counter()
     last_bin = None
     try:
-        for frame in source.frames():
+        frames = iter(source.frames())
+        while True:
+            before_capture = time.perf_counter()
+            frame = next(frames)
             after_capture = time.perf_counter()
             sig = fast.process(frame.image_bgr, frame.ts_ms, frame.camera_ok)
             hs = None
@@ -43,7 +51,10 @@ def main():
             result = runtime.step(sig, hs)
             end = time.perf_counter()
             process_ms.append((end-after_capture)*1000)
-            rows.append({**result, "elapsed_s": end-start, "processing_ms": process_ms[-1]})
+            read_to_result_ms.append((end-before_capture)*1000)
+            rows.append({**result, "elapsed_s": end-start, "processing_ms": process_ms[-1],
+                         "history_s": len(runtime.buffer.arrays()[0])/10,
+                         "read_to_result_ms": read_to_result_ms[-1]})
             if len(rows) % 300 == 0:
                 print(f"frames={len(rows)} seconds={end-start:.1f} face_valid={result['face_valid']} status={result['model_status']}", flush=True)
             if end-start >= args.seconds:
@@ -58,10 +69,14 @@ def main():
     report = {"host": platform.platform(), "checkpoint": str(checkpoint), "seconds": elapsed, "frames": len(rows),
               "processed_fps": len(rows)/elapsed, "processing_ms_p50": float(np.percentile(process_ms, 50)),
               "processing_ms_p95": float(np.percentile(process_ms, 95)),
+              "read_to_result_ms_p50": float(np.percentile(read_to_result_ms, 50)),
+              "read_to_result_ms_p95": float(np.percentile(read_to_result_ms, 95)),
+              "camera": camera_info, "timestamp_adjustments": source.timestamp_adjustments,
               "face_valid_fraction": sum(r["face_valid"] for r in rows)/len(rows),
               "frames_with_model_score": sum(r["camera_drowsiness_score"] is not None for r in rows),
               "first_score_s": next((r["elapsed_s"] for r in rows if r["camera_drowsiness_score"] is not None), None),
               "timestamp_gaps_over_300ms": int((gaps > 300).sum()),
+              "nonmonotonic_timestamps": int((gaps <= 0).sum()),
               "latency_scope": "processing after OpenCV read; sensor exposure and internal driver queue age unknown",
               "raw_images_saved": False, "accuracy_evaluated": False,
               "limitations": ["camera frame-drop count unavailable without sensor sequence numbers", "no labeled events: false alerts/hour not established", "physical camera loss and model switching require separate controlled checks"]}

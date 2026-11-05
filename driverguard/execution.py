@@ -37,6 +37,7 @@ def bundle_source(root: Path, output: Path) -> dict:
     root = root.resolve()
     files = sorted((root / "driverguard").rglob("*.py"))
     files += sorted((root / "scripts").rglob("*.py"))
+    files += sorted((root / "scripts").rglob("*.html"))
     files += [root / p for p in ("pyproject.toml", "README.md", "configs/default.yaml")]
     files += sorted((root / "kaggle").glob("*.py"))
     files += sorted((root / "kaggle").glob("*.ipynb"))

@@ -1,7 +1,8 @@
 # Checklist công việc tiếp theo
 
-Cập nhật 03/11/2026, dựa trên báo cáo khôi phục, protocol tuần 5 và docs dự án.
-Tuần 6–7 bên dưới là kế hoạch đề xuất theo tài liệu, không phải kết quả đã hoàn thành.
+Cập nhật 05/11/2026, dựa trên báo cáo khôi phục, protocol tuần 5 và docs dự án.
+Tiến độ và lệnh chạy tuần 6: [workflow và bằng chứng](17_week6_workflow.md).
+Các ô chưa đánh dấu vẫn cần thực hiện; chưa nghiệm thu toàn bộ tuần 6.
 
 ## Mốc đã có
 
@@ -46,7 +47,7 @@ mốc capture-to-result vẫn chưa xác nhận và chưa có nhãn để tính 
   hoặc tái chạy 20 video ×7 điều kiện bằng script/config hiện có. Đầu ra: báo cáo
   accuracy, macro-F1, coverage và lý do từ chối theo điều kiện. Bộ RGB giảm sáng
   chỉ hỗ trợ đánh giá biến đổi ánh sáng, chưa xác nhận khả năng chạy ban đêm thật.
-- [ ] **Khôi phục/tải DROZY và audit intake.** Đối chiếu 36 phiên/14 người được
+- [x] **Khôi phục/tải DROZY và audit intake.** Đối chiếu 36 phiên/14 người được
   báo cáo; kiểm tính toàn vẹn, danh mục video/PSG/KSS/PVT và file thời gian.
   Đầu ra: manifest/audit chỉ rõ file đủ, thiếu và chưa xác minh.
 - [ ] **Cập nhật đối chiếu tuần 5 sau khi có artifact.** Gắn từng kết luận với
@@ -58,15 +59,20 @@ mốc capture-to-result vẫn chưa xác nhận và chưa có nhãn để tính 
 - [ ] **Hoàn tất A2 review 40 clip.** Khôi phục/tạo lại video và biểu mẫu; người
   đánh giá xem theo protocol, ghi interval và uncertainty, phân xử bất đồng trước
   khi xuất nhãn phiên bản mới. Phụ thuộc video nguồn và người review.
-- [ ] **Khóa các thí nghiệm cải tiến từ kết quả phân tích lỗi.** Chọn ablation có
+  Đã có 40 clip khớp hash và một lượt AI đề xuất (45 interval, chưa phân xử);
+  biểu mẫu Luân/Huy vẫn riêng, chưa điền thay người thật.
+- [x] **Khóa các thí nghiệm cải tiến từ kết quả phân tích lỗi.** Chọn ablation có
   lý do, ghi config/seed/split/tiêu chí lựa chọn trước khi chạy. Dùng 30 run đã xác
   minh làm baseline; ưu tiên GRU theo paired CI hiện có. Đầu ra: kế hoạch chạy Kaggle.
+  Hai biến thể ×5 fold ×3 seed =30 job; hai smoke CPU chạy được.
 - [ ] **Chạy và so sánh ablation trên Kaggle.** Báo đủ seed 42/43/44, fold, CI theo
   người, macro-F1 và coverage; quyết định bằng argmax theo protocol. Đầu ra: bảng
   kết quả tái lập được và quyết định giữ/loại từng cải tiến.
 - [ ] **Xác minh đồng bộ DROZY.** Kiểm CamSync/interpIndices, người/phiên và sai số
   căn chỉnh camera–PSG. Chỉ triển khai teacher EEG/student sau khi đồng bộ và nhãn
   đã được kiểm chứng; đánh giá teacher với tách người phù hợp.
+  Đã xuất mapping có mask cho 36 phiên, 29 phiên đạt policy phân tích và 7
+  phiên bị loại; chưa chứng nhận đồng bộ sinh lý hoặc nhãn EEG để train teacher.
 - [ ] **Chuẩn bị cohort độc lập ngày/đêm.** Chốt protocol, nguồn dữ liệu, nhãn và
   người development/test trước khi phát triển trên cohort mới. Đầu ra: tập test
   riêng có thể khóa để nghiệm thu ứng viên.

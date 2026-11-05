@@ -1,0 +1,29 @@
+{
+  "version": "week6_20261103_v1",
+  "source_sheet_gid": "911502963",
+  "source_sheet_rows": [34, 35, 36, 37, 38],
+  "task": "alert_drowsy",
+  "purpose": "development ablation preparation; independent acceptance pending",
+  "hypotheses": [
+    {"id": "H1", "observation": "Subjects 28 and 19 have poor CV accuracy despite full coverage", "hypothesis": "Regularizing observed geometry may reduce sensitivity to person-specific measurements", "variant": "gru_noise005"},
+    {"id": "H2", "observation": "Drowsy recall is approximately 72 percent and high-quality inputs still contain errors", "hypothesis": "Dropout 0.5 may suppress useful weak-label temporal cues in the small GRU", "variant": "gru_dropout03"}
+  ],
+  "base_config": "configs/training/camera_gru_dann_uta_full_v002_window.json",
+  "fold_protocol": "configs/training/evaluation_protocol_v1.json",
+  "variants": [
+    {"id": "gru_noise005", "overrides": {"mode": "gru", "input_noise": 0.05}},
+    {"id": "gru_dropout03", "overrides": {"mode": "gru", "dropout": 0.3}}
+  ],
+  "baseline": "models/recovered_week5/experiments/fold{fold}_gru_seed{seed}",
+  "seeds": [42, 43, 44],
+  "folds": [1, 2, 3, 4, 5],
+  "decision_rule": "argmax; no tuned threshold",
+  "epoch_selection": "inner_validation.window.subject_macro.macro_f1",
+  "primary": "120-second accepted-window accuracy; report coverage separately",
+  "comparison": "paired same clip/end timestamp; subject-bootstrap 95 percent CI; report every variant and seed",
+  "architecture_previously_developed_on_population": true,
+  "original_test_open_allowed": false,
+  "full_training": "Kaggle GPU T4 x2",
+  "local_execution": "dry-run, audit, short CPU smoke only",
+  "independent_acceptance": false
+}

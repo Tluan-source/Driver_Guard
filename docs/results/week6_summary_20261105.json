@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-05",
+  "source_sheet": "https://docs.google.com/spreadsheets/d/1xTmUC8TSeNlwzOtknd8n4HYEc-2OISQRW6JcvNxYzI8/edit?gid=911502963#gid=911502963",
+  "source_rows": [
+    34,
+    35,
+    36,
+    37,
+    38
+  ],
+  "week6_fully_complete": false,
+  "independent_acceptance": false,
+  "original_test_opened": false,
+  "ai_review": {
+    "version": "week6_ai_visual_review_20261105_v1",
+    "review_kind": "AI_provisional",
+    "clips_reviewed": 40,
+    "intervals": 45,
+    "clip_level_states": {
+      "uncertain": 12,
+      "alert": 28
+    },
+    "interval_duration_s": {
+      "uncertain": 102.2,
+      "alert": 297.8
+    },
+    "independent_human_reviews": 0,
+    "adjudicated": false,
+    "ready_for_training_labels": false,
+    "observations_sha256": "bceb1289ec8f61297de8dd34018ed6393e0eaf3e03fb3daa36e8f6b0930a3891",
+    "limitations": [
+      "Contact sheets of decoded frames; not a continuous-playback human review",
+      "One AI review; does not count as two independent people or adjudication",
+      "Assistant had implementation context; not certified as fully blinded",
+      "Face landmarks were used only to position viewing crops, not to create labels",
+      "Only 10-second clips were visually reviewed; longer temporal context is still needed for uncertain cases",
+      "No physiological onset inferred and no original training label replaced"
+    ]
+  },
+  "human_review": {
+    "selected_intervals": 40,
+    "verified_videos": 40,
+    "reviewed_clip_counts": {
+      "reviewer_a": 0,
+      "reviewer_b": 0,
+      "adjudication": 0
+    },
+    "ready_for_training_labels": false,
+    "status": "awaiting_human_review",
+    "scope": "checks source-crop hash and form completeness; human judgment is not automatically validated"
+  },
+  "drozy": {
+    "status": "technical_alignment_completed_with_masks_and_exclusions",
+    "settings_sha256": "170c16609772278ef78e141164500b6fa9d8574230fe01bd48a62064ffe7ffe2",
+    "intake_audit_sha256": "f1620aa528701093632e461e6a0faaeade102980eafa533d5c2ee32f8f84f34f",
+    "sessions_audited": 36,
+    "qualified_sessions": [
+      "1-1",
+      "1-2",
+      "1-3",
+      "2-1",
+      "2-2",
+      "3-1",
+      "3-2",
+      "3-3",
+      "4-1",
+      "4-3",
+      "5-1",
+      "6-1",
+      "6-2",
+      "7-3",
+      "8-1",
+      "8-3",
+      "9-2",
+      "9-3",
+      "10-1",
+      "10-3",
+      "11-1",
+      "11-2",
+      "11-3",
+      "12-1",
+      "13-1",
+      "13-2",
+      "14-1",
+      "14-2",
+      "14-3"
+    ],
+    "excluded_sessions": [
+      "2-3",
+      "4-2",
+      "5-2",
+      "5-3",
+      "6-3",
+      "7-2",
+      "8-2"
+    ],
+    "physiological_alignment_certified": false,
+    "ready_for_eeg_supervision": false,
+    "scope": "fixed timestamp-to-edge tolerance and unique matching; rejected frames stay masked",
+    "grid_origin_resolved": false,
+    "limitations": [
+      "Accepted zero crossings are algorithmic correspondences, not expert-certified triggers",
+      "Grid row origin is unresolved; both candidate origins are bounded by the configured tolerance",
+      "Do not use maps for physiological onset/teacher training without a reviewed labeling protocol"
+    ]
+  },
+  "ablation": {
+    "sheet_row": 37,
+    "item": "Prepare ablation experiments",
+    "status": "prepared_smoke_verified",
+    "new_gpu_jobs_prepared": 30,
+    "cpu_smoke_variants_verified": 2,
+    "full_ablation_cv_executed": false,
+    "smoke_is_research_quality_evidence": false
+  },
+  "cohort": {
+    "participants_enrolled": 0,
+    "split_frozen": false,
+    "sessions_metadata_valid": 0,
+    "cohort_collected": false,
+    "human_labels_verified": false,
+    "independent_acceptance": false,
+    "media_or_labels_opened": false,
+    "minimum_continuous_session_s": 600,
+    "conditions": [
+      "day_RGB",
+      "night_RGB"
+    ],
+    "issues": [],
+    "status": "recruitment_and_split_freeze_pending"
+  },
+  "tests": {
+    "tests": "348",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "time": "78.627"
+  },
+  "checks": {
+    "ruff_changed_python": "passed",
+    "compile_changed_python": "passed",
+    "git_diff_check": "passed"
+  },
+  "remaining": [
+    "Luân/Huy independent human confirmation and adjudication",
+    "Recruit and collect consented independent day/night cohort; verify labels"
+  ]
+}
