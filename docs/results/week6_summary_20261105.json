@@ -139,7 +139,9 @@
   "checks": {
     "ruff_changed_python": "passed",
     "compile_changed_python": "passed",
-    "git_diff_check": "passed"
+    "git_diff_check": "passed",
+    "source_provenance_regressions": "2 passed",
+    "related_tests_after_provenance_fix": "41 passed"
   },
   "remaining": [
     "Luân/Huy independent human confirmation and adjudication",

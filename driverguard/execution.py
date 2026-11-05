@@ -20,16 +20,21 @@ def file_sha256(path: Path) -> str:
 
 
 def source_provenance(root: Path) -> dict:
-    exported = root / "build_info.json"
-    if exported.is_file():
-        return json.loads(exported.read_text(encoding="utf-8"))
+    root = root.resolve()
     try:
+        checkout = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+                                  capture_output=True, text=True, check=True).stdout.strip()
+        if Path(checkout).resolve() != root:
+            raise ValueError("Export directory is not the checkout root")
         sha = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
                              capture_output=True, text=True, check=True).stdout.strip()
         dirty = bool(subprocess.run(["git", "-C", str(root), "status", "--porcelain"],
                                     capture_output=True, text=True, check=True).stdout.strip())
         return {"git_sha": sha, "working_tree_dirty": dirty, "provenance_source": "git"}
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        exported = root / "build_info.json"
+        if exported.is_file():
+            return json.loads(exported.read_text(encoding="utf-8"))
         return {"git_sha": None, "working_tree_dirty": None, "provenance_source": "unavailable"}
 
 
